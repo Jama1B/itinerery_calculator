@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  FileDown,
   Calendar,
   Users,
   DollarSign,
@@ -33,6 +31,7 @@ import {
   Plus,
   Trash2,
   Bed,
+  BabyIcon as Child,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,22 +51,25 @@ import { calculatePercentage } from "@/lib/utils";
 import { jsPDF } from "jspdf";
 import {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogClose,
   DialogTrigger,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog";
-import { DayItinerary, Place, RoomAllocation } from "@/types";
-import { ACCOMMODATIONS, CONCESSION_FEE, PLACES } from "@/lib/data";
 import { useClientStore } from "@/lib/store";
+import { DayItinerary, RoomAllocation } from "@/types";
+import {
+  ACCOMMODATIONS,
+  CHILD_CONCESSION_FEE,
+  CONCESSION_FEE,
+  PLACES,
+} from "@/lib/data";
+
+// Define types for our data
+
 export default function SafariCalculator() {
   const [days, setDays] = useState<number>(3);
-  const { clients, setClients } = useClientStore();
+  const { adults, children, setAdults, setChildren, getTotalClients } =
+    useClientStore();
   const [itinerary, setItinerary] = useState<DayItinerary[]>([]);
   const [profitAmount, setProfitAmount] = useState<number>(500);
   const [activeTab, setActiveTab] = useState<string>("setup");
@@ -89,14 +91,14 @@ export default function SafariCalculator() {
             ...day,
             roomAllocation: suggestRoomAllocation(
               day.selectedAccommodation,
-              clients
+              getTotalClients()
             ),
           };
         }
         return day;
       })
     );
-  }, [clients]); // Now this effect depends on the clients from the store
+  }, [getTotalClients]); // Now this effect depends on both adults and children
 
   const initializeItinerary = (numDays: number) => {
     const newItinerary: DayItinerary[] = [];
@@ -336,8 +338,10 @@ export default function SafariCalculator() {
   // Calculate day costs
   const calculateDayCosts = (day: DayItinerary) => {
     let accommodationCost = 0;
-    let activitiesCost = 0;
-    let concessionFee = 0;
+    let adultActivitiesCost = 0;
+    let childActivitiesCost = 0;
+    let adultConcessionFee = 0;
+    let childConcessionFee = 0;
 
     // Accommodation cost
     if (day.selectedAccommodation && day.selectedAccommodation !== "none") {
@@ -362,15 +366,19 @@ export default function SafariCalculator() {
           if (activity) {
             // Special handling for Ngorongoro Crater Floor Tour - charged per group
             if (activityId === "ngorongoro-crater-tour") {
-              activitiesCost += isHighSeason
+              adultActivitiesCost += isHighSeason
                 ? activity.highSeasonCost
                 : activity.lowSeasonCost;
             } else {
               // All other activities - charged per person
-              activitiesCost +=
+              adultActivitiesCost +=
                 (isHighSeason
                   ? activity.highSeasonCost
-                  : activity.lowSeasonCost) * clients;
+                  : activity.lowSeasonCost) * adults;
+              childActivitiesCost +=
+                (isHighSeason
+                  ? activity.childHighSeasonCost
+                  : activity.childLowSeasonCost) * children;
             }
           }
         });
@@ -379,54 +387,92 @@ export default function SafariCalculator() {
 
     // Concession fee if applicable
     if (day.hasConcessionFee) {
-      concessionFee = CONCESSION_FEE * clients;
+      adultConcessionFee = CONCESSION_FEE * adults;
+      childConcessionFee = CHILD_CONCESSION_FEE * children;
     }
+
+    const totalActivitiesCost = adultActivitiesCost + childActivitiesCost;
+    const totalConcessionFee = adultConcessionFee + childConcessionFee;
 
     return {
       accommodationCost,
-      activitiesCost,
+      adultActivitiesCost,
+      childActivitiesCost,
+      totalActivitiesCost,
+      adultConcessionFee,
+      childConcessionFee,
+      totalConcessionFee,
       transportationCost: day.transportationCost,
-      concessionFee,
       totalCost:
         accommodationCost +
-        activitiesCost +
+        totalActivitiesCost +
         day.transportationCost +
-        concessionFee,
+        totalConcessionFee,
     };
   };
 
   // Calculate totals
   const calculateTotals = () => {
     let totalAccommodation = 0;
-    let totalActivities = 0;
+    let totalAdultActivities = 0;
+    let totalChildActivities = 0;
     let totalTransportation = 0;
-    let totalConcessionFees = 0;
+    let totalAdultConcessionFees = 0;
+    let totalChildConcessionFees = 0;
 
     itinerary.forEach((day) => {
       const costs = calculateDayCosts(day);
       totalAccommodation += costs.accommodationCost;
-      totalActivities += costs.activitiesCost;
+      totalAdultActivities += costs.adultActivitiesCost;
+      totalChildActivities += costs.childActivitiesCost;
       totalTransportation += costs.transportationCost;
-      totalConcessionFees += costs.concessionFee;
+      totalAdultConcessionFees += costs.adultConcessionFee;
+      totalChildConcessionFees += costs.childConcessionFee;
     });
 
+    const totalActivities = totalAdultActivities + totalChildActivities;
+    const totalConcessionFees =
+      totalAdultConcessionFees + totalChildConcessionFees;
     const subtotal =
       totalAccommodation +
       totalActivities +
       totalTransportation +
       totalConcessionFees;
     const total = subtotal + profitAmount;
-    const perPerson = clients > 0 ? total / clients : 0;
+
+    let perAdult = 0;
+    let perChild = 0;
+
+    // Apply the 1:2 ratio split between adults and children
+    if (adults > 0 && children > 0) {
+      // Calculate based on "shares" where adults count as 2 shares, children as 1 share
+      const totalShares = adults * 2 + children;
+      const costPerShare = total / totalShares;
+
+      perAdult = 2 * costPerShare;
+      perChild = costPerShare;
+    } else if (adults > 0) {
+      // Only adults
+      perAdult = total / adults;
+    } else if (children > 0) {
+      // Only children (unlikely case)
+      perChild = total / children;
+    }
 
     return {
       accommodation: totalAccommodation,
+      adultActivities: totalAdultActivities,
+      childActivities: totalChildActivities,
       activities: totalActivities,
       transportation: totalTransportation,
+      adultConcessionFees: totalAdultConcessionFees,
+      childConcessionFees: totalChildConcessionFees,
       concessionFees: totalConcessionFees,
       subtotal,
       profit: profitAmount,
       total,
-      perPerson,
+      perAdult,
+      perChild,
     };
   };
 
@@ -444,6 +490,7 @@ export default function SafariCalculator() {
     setIsExportDialogOpen(true);
   };
 
+  // Update the handleExport function to include the 1:2 ratio information
   const handleExport = () => {
     const doc = new jsPDF();
     const fileName = tourName.trim() || "safari-itinerary";
@@ -455,10 +502,11 @@ export default function SafariCalculator() {
     // Add basic info
     doc.setFontSize(12);
     doc.text(`Duration: ${days} days`, 20, 35);
-    doc.text(`Number of Clients: ${clients}`, 20, 45);
-    doc.text(`Season: ${isHighSeason ? "High Season" : "Low Season"}`, 20, 55);
+    doc.text(`Number of Adults: ${adults}`, 20, 45);
+    doc.text(`Number of Children (<15): ${children}`, 20, 55);
+    doc.text(`Season: ${isHighSeason ? "High Season" : "Low Season"}`, 20, 65);
 
-    let yPos = 70;
+    let yPos = 80;
 
     // Add itinerary details
     doc.setFontSize(16);
@@ -556,8 +604,36 @@ export default function SafariCalculator() {
     doc.text(`Profit: ${formatCurrency(totals.profit)}`, 30, yPos);
     yPos += 10;
     doc.text(`Total Cost: ${formatCurrency(totals.total)}`, 30, yPos);
-    yPos += 10;
-    doc.text(`Cost Per Person: ${formatCurrency(totals.perPerson)}`, 30, yPos);
+
+    if (adults > 0 && children > 0) {
+      yPos += 15;
+      doc.text(
+        "Price Distribution (1:2 ratio between children and adults):",
+        30,
+        yPos
+      );
+      yPos += 10;
+      doc.text(`Cost Per Adult: ${formatCurrency(totals.perAdult)}`, 30, yPos);
+      yPos += 10;
+      doc.text(`Cost Per Child: ${formatCurrency(totals.perChild)}`, 30, yPos);
+    } else {
+      if (adults > 0) {
+        yPos += 10;
+        doc.text(
+          `Cost Per Adult: ${formatCurrency(totals.perAdult)}`,
+          30,
+          yPos
+        );
+      }
+      if (children > 0) {
+        yPos += 10;
+        doc.text(
+          `Cost Per Child: ${formatCurrency(totals.perChild)}`,
+          30,
+          yPos
+        );
+      }
+    }
 
     // Save the PDF
     doc.save(`${fileName.toLowerCase().replace(/\s+/g, "-")}.pdf`);
@@ -656,7 +732,10 @@ export default function SafariCalculator() {
       return;
     }
 
-    const suggestedAllocation = suggestRoomAllocation(accommodationId, clients);
+    const suggestedAllocation = suggestRoomAllocation(
+      accommodationId,
+      getTotalClients()
+    );
 
     updateItinerary(dayId, "selectedAccommodation", accommodationId);
     updateItinerary(dayId, "roomAllocation", suggestedAllocation);
@@ -669,25 +748,27 @@ export default function SafariCalculator() {
       defaultValue="setup"
       value={activeTab}
       onValueChange={setActiveTab}
-      className="space-y-6"
+      className="space-y-4 md:space-y-6"
     >
-      <TabsList className="grid grid-cols-3 w-full md:w-[400px]">
+      <TabsList className="grid grid-cols-3 w-full">
         <TabsTrigger value="setup">Setup</TabsTrigger>
         <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
         <TabsTrigger value="summary">Summary</TabsTrigger>
       </TabsList>
 
       {/* Setup Tab */}
-      <TabsContent value="setup" className="space-y-6">
+      <TabsContent value="setup" className="space-y-4 md:space-y-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Safari Details</CardTitle>
+          <CardHeader className="pb-2 md:pb-4">
+            <CardTitle className="text-xl md:text-2xl">
+              Safari Details
+            </CardTitle>
             <CardDescription>
               Enter the basic information about your safari
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-3">
+          <CardContent className="space-y-4 md:space-y-6">
+            <div className="grid gap-4 md:gap-6 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="days" className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
@@ -702,21 +783,36 @@ export default function SafariCalculator() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="clients" className="flex items-center gap-2">
+                <Label htmlFor="adults" className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Number of Clients
+                  Number of Adults
                 </Label>
                 <Input
-                  id="clients"
+                  id="adults"
                   type="number"
                   min="1"
-                  value={clients}
+                  value={adults}
                   onChange={(e) =>
-                    setClients(Number.parseInt(e.target.value) || 1)
+                    setAdults(Number.parseInt(e.target.value) || 1)
                   }
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="children" className="flex items-center gap-2">
+                  <Child className="h-4 w-4" />
+                  Children (Under 15)
+                </Label>
+                <Input
+                  id="children"
+                  type="number"
+                  min="0"
+                  value={children}
+                  onChange={(e) =>
+                    setChildren(Number.parseInt(e.target.value) || 0)
+                  }
+                />
+              </div>
+              <div className="space-y-2 md:col-span-3">
                 <Label htmlFor="profit" className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
                   Profit Amount ($)
@@ -733,8 +829,10 @@ export default function SafariCalculator() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="season-toggle">Season:</Label>
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+              <Label htmlFor="season-toggle" className="mb-1 sm:mb-0">
+                Season:
+              </Label>
               <div className="flex items-center space-x-2">
                 <span
                   className={!isHighSeason ? "font-medium" : "text-gray-500"}
@@ -764,23 +862,32 @@ export default function SafariCalculator() {
       </TabsContent>
 
       {/* Itinerary Tab */}
-      <TabsContent value="itinerary" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-green-800">
+      <TabsContent value="itinerary" className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
             Day by Day Itinerary
           </h2>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setActiveTab("setup")}>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab("setup")}
+              className="w-full sm:w-auto"
+            >
               Back to Setup
             </Button>
-            <Button onClick={() => setActiveTab("summary")}>
+            <Button
+              onClick={() => setActiveTab("summary")}
+              className="w-full sm:w-auto"
+            >
               Continue to Summary
             </Button>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 mb-4">
-          <Label htmlFor="season-toggle-2">Season:</Label>
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
+          <Label htmlFor="season-toggle-2" className="mb-1 sm:mb-0">
+            Season:
+          </Label>
           <div className="flex items-center space-x-2">
             <span className={!isHighSeason ? "font-medium" : "text-gray-500"}>
               Low Season
@@ -799,15 +906,15 @@ export default function SafariCalculator() {
         <Accordion type="single" collapsible className="w-full">
           {itinerary.map((day) => (
             <AccordionItem key={day.id} value={`day-${day.id}`}>
-              <AccordionTrigger className="hover:bg-green-50 px-4 rounded-md">
-                <div className="flex items-center gap-2">
+              <AccordionTrigger className="hover:bg-green-50 px-3 md:px-4 rounded-md">
+                <div className="flex items-center gap-2 text-sm md:text-base">
                   <Badge
                     variant="outline"
                     className="bg-green-100 text-green-800 hover:bg-green-100"
                   >
                     Day {day.id}
                   </Badge>
-                  <span className="font-medium">
+                  <span className="font-medium truncate max-w-[150px] sm:max-w-[250px] md:max-w-none">
                     {day.places.length > 0
                       ? day.places
                           .map((p) => getPlaceById(p.placeId)?.name || "")
@@ -817,28 +924,28 @@ export default function SafariCalculator() {
                   </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-4 pt-4">
+              <AccordionContent className="px-2 md:px-4 pt-4">
                 <Card className="border-green-200">
-                  <CardContent className="space-y-6 pt-6">
+                  <CardContent className="space-y-4 md:space-y-6 pt-4 md:pt-6 px-3 md:px-6">
                     {/* Places Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-lg font-medium flex items-center gap-2">
-                          <MapPin className="h-5 w-5" />
+                    <div className="space-y-3 md:space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                        <Label className="text-base md:text-lg font-medium flex items-center gap-2">
+                          <MapPin className="h-4 w-4 md:h-5 md:w-5" />
                           Places to Visit
                         </Label>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => addPlaceToDay(day.id)}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 w-full sm:w-auto"
                         >
                           <Plus className="h-4 w-4" /> Add Place
                         </Button>
                       </div>
 
                       {day.places.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 border border-dashed rounded-md">
+                        <div className="text-center py-4 text-gray-500 border border-dashed rounded-md text-sm">
                           No places added. Click "Add Place" to begin.
                         </div>
                       )}
@@ -846,10 +953,10 @@ export default function SafariCalculator() {
                       {day.places.map((place, placeIndex) => (
                         <div
                           key={placeIndex}
-                          className="border rounded-md p-4 space-y-4"
+                          className="border rounded-md p-3 md:p-4 space-y-3 md:space-y-4"
                         >
                           <div className="flex items-center justify-between">
-                            <h4 className="font-medium">
+                            <h4 className="font-medium text-sm md:text-base">
                               Place {placeIndex + 1}
                             </h4>
                             <Button
@@ -867,7 +974,10 @@ export default function SafariCalculator() {
 
                           {/* Place Selection */}
                           <div className="space-y-2">
-                            <Label htmlFor={`place-${day.id}-${placeIndex}`}>
+                            <Label
+                              htmlFor={`place-${day.id}-${placeIndex}`}
+                              className="text-sm"
+                            >
                               Select Destination
                             </Label>
                             <Select
@@ -878,6 +988,7 @@ export default function SafariCalculator() {
                             >
                               <SelectTrigger
                                 id={`place-${day.id}-${placeIndex}`}
+                                className="text-sm"
                               >
                                 <SelectValue placeholder="Select a place to visit" />
                               </SelectTrigger>
@@ -886,6 +997,7 @@ export default function SafariCalculator() {
                                   <SelectItem
                                     key={placeOption.id}
                                     value={placeOption.id}
+                                    className="text-sm"
                                   >
                                     {placeOption.name}
                                   </SelectItem>
@@ -894,7 +1006,7 @@ export default function SafariCalculator() {
                             </Select>
 
                             {place.placeId && (
-                              <p className="text-sm text-gray-500 mt-1">
+                              <p className="text-xs md:text-sm text-gray-500 mt-1">
                                 {getPlaceById(place.placeId)?.description}
                               </p>
                             )}
@@ -903,7 +1015,7 @@ export default function SafariCalculator() {
                           {/* Activities Selection */}
                           {place.placeId && (
                             <div className="space-y-2">
-                              <Label className="flex items-center gap-2">
+                              <Label className="flex items-center gap-2 text-sm">
                                 Activities
                               </Label>
                               <div className="space-y-2">
@@ -930,24 +1042,24 @@ export default function SafariCalculator() {
                                           />
                                           <label
                                             htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                            className="font-medium cursor-pointer"
+                                            className="font-medium cursor-pointer text-xs md:text-sm"
                                           >
                                             {activity.name}
                                           </label>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                          <span className="font-medium text-green-700">
+                                          <span className="font-medium text-green-700 text-xs md:text-sm">
                                             {formatCurrency(
                                               isHighSeason
                                                 ? activity.highSeasonCost
                                                 : activity.lowSeasonCost
                                             )}
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-xs text-gray-500 hidden sm:inline">
                                               {" "}
                                               {activity.id ===
                                               "ngorongoro-crater-tour"
                                                 ? "per group"
-                                                : "per person"}
+                                                : "per adult"}
                                             </span>
                                           </span>
                                           <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
@@ -971,9 +1083,29 @@ export default function SafariCalculator() {
                                         </div>
                                       </div>
                                       <CollapsibleContent className="p-2 pt-0 border-t">
-                                        <p className="text-sm text-gray-600">
+                                        <p className="text-xs md:text-sm text-gray-600">
                                           {activity.description}
                                         </p>
+                                        <div className="mt-2 space-y-1">
+                                          <p className="text-xs text-gray-500 sm:hidden">
+                                            {activity.id ===
+                                            "ngorongoro-crater-tour"
+                                              ? "Charged per group"
+                                              : "Charged per person"}
+                                          </p>
+                                          {activity.id !==
+                                            "ngorongoro-crater-tour" && (
+                                            <p className="text-xs text-green-700">
+                                              Child price:{" "}
+                                              {formatCurrency(
+                                                isHighSeason
+                                                  ? activity.childHighSeasonCost
+                                                  : activity.childLowSeasonCost
+                                              )}{" "}
+                                              per child
+                                            </p>
+                                          )}
+                                        </div>
                                       </CollapsibleContent>
                                     </Collapsible>
                                   )
@@ -986,12 +1118,12 @@ export default function SafariCalculator() {
                     </div>
 
                     {/* Accommodation Selection */}
-                    <div className="space-y-4">
+                    <div className="space-y-3 md:space-y-4">
                       <Label
                         htmlFor={`accommodation-${day.id}`}
-                        className="text-lg font-medium flex items-center gap-2"
+                        className="text-base md:text-lg font-medium flex items-center gap-2"
                       >
-                        <Hotel className="h-5 w-5" />
+                        <Hotel className="h-4 w-4 md:h-5 md:w-5" />
                         {day.id === days
                           ? "Accommodation (Optional for Last Day)"
                           : "Overnight Accommodation"}
@@ -1002,7 +1134,10 @@ export default function SafariCalculator() {
                           handleAccommodationChange(day.id, value)
                         }
                       >
-                        <SelectTrigger id={`accommodation-${day.id}`}>
+                        <SelectTrigger
+                          id={`accommodation-${day.id}`}
+                          className="text-sm"
+                        >
                           <SelectValue
                             placeholder={
                               day.id === days
@@ -1012,11 +1147,15 @@ export default function SafariCalculator() {
                           />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">
+                          <SelectItem value="none" className="text-sm">
                             No accommodation (departure day)
                           </SelectItem>
                           {ACCOMMODATIONS.map((acc) => (
-                            <SelectItem key={acc.id} value={acc.id}>
+                            <SelectItem
+                              key={acc.id}
+                              value={acc.id}
+                              className="text-sm"
+                            >
                               {acc.name}
                             </SelectItem>
                           ))}
@@ -1025,22 +1164,24 @@ export default function SafariCalculator() {
 
                       {day.selectedAccommodation &&
                         day.selectedAccommodation !== "none" && (
-                          <div className="space-y-4">
-                            <p className="text-sm text-gray-500">
+                          <div className="space-y-3 md:space-y-4">
+                            <p className="text-xs md:text-sm text-gray-500">
                               {
                                 getAccommodationById(day.selectedAccommodation)
                                   ?.description
                               }
                             </p>
-                            <p className="text-green-700 font-medium">
+                            <p className="text-green-700 font-medium text-xs md:text-sm">
                               Includes: Full Board (All Meals)
                             </p>
 
                             {/* Room Allocation */}
-                            <div className="border rounded-md p-4 bg-gray-50">
-                              <div className="flex items-center gap-2 mb-3">
+                            <div className="border rounded-md p-3 md:p-4 bg-gray-50">
+                              <div className="flex items-center gap-2 mb-2 md:mb-3">
                                 <Bed className="h-4 w-4" />
-                                <h4 className="font-medium">Room Allocation</h4>
+                                <h4 className="font-medium text-sm md:text-base">
+                                  Room Allocation
+                                </h4>
                               </div>
 
                               <div className="space-y-3">
@@ -1057,10 +1198,10 @@ export default function SafariCalculator() {
                                   return (
                                     <div
                                       key={roomType.id}
-                                      className="flex items-center justify-between"
+                                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0"
                                     >
                                       <div>
-                                        <p className="font-medium">
+                                        <p className="font-medium text-sm">
                                           {roomType.name}
                                         </p>
                                         <p className="text-xs text-gray-500">
@@ -1092,7 +1233,7 @@ export default function SafariCalculator() {
                                         >
                                           -
                                         </Button>
-                                        <span className="w-8 text-center">
+                                        <span className="w-8 text-center text-sm">
                                           {quantity}
                                         </span>
                                         <Button
@@ -1116,9 +1257,9 @@ export default function SafariCalculator() {
 
                                 <Separator className="my-2" />
 
-                                <div className="flex justify-between items-center">
-                                  <div>
-                                    <span className="text-sm font-medium">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                                  <div className="text-sm">
+                                    <span className="font-medium">
                                       Total Accommodated:
                                     </span>
                                     <span className="ml-2">
@@ -1126,24 +1267,27 @@ export default function SafariCalculator() {
                                         day.roomAllocation,
                                         day.selectedAccommodation
                                       )}{" "}
-                                      / {clients} clients
+                                      / {getTotalClients()} clients
                                     </span>
                                   </div>
                                   {calculateTotalClientsAccommodated(
                                     day.roomAllocation,
                                     day.selectedAccommodation
-                                  ) < clients && (
-                                    <Badge variant="destructive">
+                                  ) < getTotalClients() && (
+                                    <Badge
+                                      variant="destructive"
+                                      className="w-full sm:w-auto text-center"
+                                    >
                                       Not enough rooms
                                     </Badge>
                                   )}
                                   {calculateTotalClientsAccommodated(
                                     day.roomAllocation,
                                     day.selectedAccommodation
-                                  ) > clients && (
+                                  ) > getTotalClients() && (
                                     <Badge
                                       variant="outline"
-                                      className="bg-amber-100 text-amber-800 border-amber-200"
+                                      className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
                                     >
                                       Extra capacity
                                     </Badge>
@@ -1165,10 +1309,10 @@ export default function SafariCalculator() {
                                 />
                                 <label
                                   htmlFor={`concession-${day.id}`}
-                                  className="text-sm font-medium cursor-pointer"
+                                  className="text-xs md:text-sm font-medium cursor-pointer"
                                 >
                                   Add park concession fee (${CONCESSION_FEE} per
-                                  person)
+                                  adult, ${CHILD_CONCESSION_FEE} per child)
                                 </label>
                               </div>
                             )}
@@ -1180,7 +1324,7 @@ export default function SafariCalculator() {
                     <div className="space-y-2">
                       <Label
                         htmlFor={`transportation-cost-${day.id}`}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 text-sm"
                       >
                         <Car className="h-4 w-4" />
                         Transportation Cost
@@ -1198,15 +1342,16 @@ export default function SafariCalculator() {
                             Number.parseFloat(e.target.value) || 0
                           )
                         }
+                        className="text-sm"
                       />
                     </div>
 
                     {/* Day Summary */}
-                    <div className="bg-green-50 p-4 rounded-md">
-                      <h4 className="font-medium text-green-800 mb-2">
+                    <div className="bg-green-50 p-3 md:p-4 rounded-md">
+                      <h4 className="font-medium text-green-800 mb-2 text-sm md:text-base">
                         Day {day.id} Cost Summary
                       </h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
                         {day.selectedAccommodation &&
                           day.selectedAccommodation !== "none" && (
                             <>
@@ -1221,33 +1366,63 @@ export default function SafariCalculator() {
 
                         {day.places.some(
                           (p) => p.selectedActivities.length > 0
-                        ) && (
-                          <>
-                            <div>
-                              Activities ({clients}{" "}
-                              {clients === 1 ? "person" : "people"}):
-                            </div>
-                            <div className="text-right font-medium">
-                              {formatCurrency(
-                                calculateDayCosts(day).activitiesCost
-                              )}
-                            </div>
-                          </>
-                        )}
+                        ) &&
+                          adults > 0 && (
+                            <>
+                              <div>
+                                Activities for {adults}{" "}
+                                {adults === 1 ? "adult" : "adults"}:
+                              </div>
+                              <div className="text-right font-medium">
+                                {formatCurrency(
+                                  calculateDayCosts(day).adultActivitiesCost
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                        {day.places.some(
+                          (p) => p.selectedActivities.length > 0
+                        ) &&
+                          children > 0 && (
+                            <>
+                              <div>
+                                Activities for {children}{" "}
+                                {children === 1 ? "child" : "children"}:
+                              </div>
+                              <div className="text-right font-medium">
+                                {formatCurrency(
+                                  calculateDayCosts(day).childActivitiesCost
+                                )}
+                              </div>
+                            </>
+                          )}
 
                         <div>Transportation:</div>
                         <div className="text-right font-medium">
                           {formatCurrency(day.transportationCost)}
                         </div>
 
-                        {day.hasConcessionFee && (
+                        {day.hasConcessionFee && adults > 0 && (
                           <>
                             <div>
-                              Concession Fees ({clients}{" "}
-                              {clients === 1 ? "person" : "people"}):
+                              Adult Concession Fees ({adults}{" "}
+                              {adults === 1 ? "person" : "people"}):
                             </div>
                             <div className="text-right font-medium">
-                              {formatCurrency(CONCESSION_FEE * clients)}
+                              {formatCurrency(CONCESSION_FEE * adults)}
+                            </div>
+                          </>
+                        )}
+
+                        {day.hasConcessionFee && children > 0 && (
+                          <>
+                            <div>
+                              Child Concession Fees ({children}{" "}
+                              {children === 1 ? "child" : "children"}):
+                            </div>
+                            <div className="text-right font-medium">
+                              {formatCurrency(CHILD_CONCESSION_FEE * children)}
                             </div>
                           </>
                         )}
@@ -1267,199 +1442,163 @@ export default function SafariCalculator() {
           ))}
         </Accordion>
 
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setActiveTab("setup")}>
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setActiveTab("setup")}
+            className="w-full sm:w-auto"
+          >
             Back to Setup
           </Button>
-          <Button onClick={() => setActiveTab("summary")}>
+          <Button
+            onClick={() => setActiveTab("summary")}
+            className="w-full sm:w-auto"
+          >
             Continue to Summary
           </Button>
         </div>
       </TabsContent>
 
       {/* Summary Tab */}
-      <TabsContent value="summary" className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-green-800">
+      <TabsContent value="summary" className="space-y-4 md:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
             Safari Cost Summary
           </h2>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setActiveTab("itinerary")}>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab("itinerary")}
+              className="w-full sm:w-auto"
+            >
               Back to Itinerary
             </Button>
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline">Export Safari Itinerary</Button>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Export Safari Itinerary
+                </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Export Safari Itinerary</DialogTitle>
-                  <DialogDescription>
-                    Enter a name for your safari tour. This will be used as the
-                    PDF file name.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Tour Name
-                    </Label>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Export Itinerary</h3>
+                  <p className="text-sm text-gray-500">
+                    Enter a name for the tour to be used as the file name.
+                  </p>
+                  <div>
+                    <Label htmlFor="tour-name">Tour Name</Label>
                     <Input
                       id="tour-name"
                       value={tourName}
                       onChange={(e) => setTourName(e.target.value)}
-                      placeholder="Enter tour name..."
-                      className="col-span-3"
+                      placeholder="Safari Tour"
                     />
                   </div>
+                  <div className="flex justify-end space-x-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="secondary">
+                        Close
+                      </Button>
+                    </DialogClose>
+                    <Button onClick={handleExport}>Export</Button>
+                  </div>
                 </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsExportDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleExport}>Export PDF</Button>
-                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        <Card className="bg-green-50 border-green-200">
-          <CardHeader>
-            <CardTitle>Safari Overview</CardTitle>
-            <CardDescription>
-              {days} day safari for {clients}{" "}
-              {clients === 1 ? "client" : "clients"} with ${profitAmount} profit
-              ({isHighSeason ? "High Season" : "Low Season"})
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-gray-600">
-                  Total Accommodation (Full Board):
-                </div>
-                <div className="font-medium text-right">
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Breakdown</CardTitle>
+              <CardDescription>Detailed breakdown of all costs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div>Accommodation:</div>
+                <div className="text-right">
                   {formatCurrency(totals.accommodation)}
                 </div>
 
-                <div className="text-gray-600">Total Activities:</div>
-                <div className="font-medium text-right">
+                <div>Activities:</div>
+                <div className="text-right">
                   {formatCurrency(totals.activities)}
                 </div>
 
-                <div className="text-gray-600">Total Transportation:</div>
-                <div className="font-medium text-right">
+                <div>Transportation:</div>
+                <div className="text-right">
                   {formatCurrency(totals.transportation)}
                 </div>
 
-                {totals.concessionFees > 0 && (
+                <div>Concession Fees:</div>
+                <div className="text-right">
+                  {formatCurrency(totals.concessionFees)}
+                </div>
+
+                <Separator className="col-span-2" />
+
+                <div className="font-medium">Subtotal:</div>
+                <div className="text-right font-medium">
+                  {formatCurrency(totals.subtotal)}
+                </div>
+
+                <div>Profit:</div>
+                <div className="text-right">
+                  {formatCurrency(totals.profit)}
+                </div>
+
+                <Separator className="col-span-2" />
+
+                <div className="font-bold">Total:</div>
+                <div className="text-right font-bold">
+                  {formatCurrency(totals.total)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Cost Per Person</CardTitle>
+              <CardDescription>
+                {adults > 0 && children > 0
+                  ? "Prices split in a 1:2 ratio (children:adults)"
+                  : "Average cost per person"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {adults > 0 && (
                   <>
-                    <div className="text-gray-600">Total Concession Fees:</div>
-                    <div className="font-medium text-right">
-                      {formatCurrency(totals.concessionFees)}
+                    <div>Cost Per Adult:</div>
+                    <div className="text-right">
+                      {formatCurrency(totals.perAdult)}
                     </div>
                   </>
                 )}
 
-                <Separator className="col-span-2 my-2" />
-
-                <div className="text-gray-600">Subtotal:</div>
-                <div className="font-medium text-right">
-                  {formatCurrency(totals.subtotal)}
-                </div>
-
-                <div className="text-gray-600">Profit:</div>
-                <div className="font-medium text-right">
-                  {formatCurrency(totals.profit)}
-                </div>
-
-                <Separator className="col-span-2 my-2" />
-
-                <div className="text-gray-600 font-semibold">
-                  Total Cost (for {clients}{" "}
-                  {clients === 1 ? "client" : "clients"}):
-                </div>
-                <div className="font-bold text-right text-green-800">
-                  {formatCurrency(totals.total)}
-                </div>
-
-                <div className="text-gray-600 font-semibold">
-                  Cost Per Person:
-                </div>
-                <div className="font-bold text-right text-green-800 text-xl">
-                  {formatCurrency(totals.perPerson)}
-                </div>
-              </div>
-
-              <div className="bg-white p-4 rounded-md border border-green-200">
-                <h3 className="font-medium text-green-800 mb-4">
-                  Itinerary Summary
-                </h3>
-                <div className="space-y-4">
-                  {itinerary.map((day) => (
-                    <div
-                      key={day.id}
-                      className="grid grid-cols-1 md:grid-cols-4 gap-2 text-sm"
-                    >
-                      <div className="font-medium">Day {day.id}:</div>
-                      <div className="md:col-span-3">
-                        {day.places.length > 0
-                          ? day.places
-                              .map((p) => getPlaceById(p.placeId)?.name || "")
-                              .filter(Boolean)
-                              .join(" & ")
-                          : "No places selected"}
-                      </div>
-                      <div className="text-gray-500">Accommodation:</div>
-                      <div className="md:col-span-3">
-                        {day.id === days && !day.selectedAccommodation
-                          ? "No accommodation (departure day)"
-                          : day.selectedAccommodation &&
-                            day.selectedAccommodation !== "none"
-                          ? getAccommodationById(day.selectedAccommodation)
-                              ?.name
-                          : "Not specified"}
-
-                        {day.selectedAccommodation &&
-                          day.selectedAccommodation !== "none" &&
-                          day.roomAllocation.length > 0 && (
-                            <span className="text-gray-500">
-                              {" - "}
-                              {day.roomAllocation
-                                .map((room, idx) => {
-                                  const roomType = getRoomTypeById(
-                                    day.selectedAccommodation,
-                                    room.roomTypeId
-                                  );
-                                  return roomType
-                                    ? `${room.quantity}x ${roomType.name}`
-                                    : "";
-                                })
-                                .filter(Boolean)
-                                .join(", ")}
-                              {" - "}
-                              {formatCurrency(
-                                calculateDayCosts(day).accommodationCost
-                              )}
-                            </span>
-                          )}
-
-                        {day.hasConcessionFee && " (+ Concession Fee)"}
-                      </div>
-                      {day.id < itinerary.length && (
-                        <Separator className="col-span-4 my-2" />
-                      )}
+                {children > 0 && (
+                  <>
+                    <div>Cost Per Child:</div>
+                    <div className="text-right">
+                      {formatCurrency(totals.perChild)}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
+
+                {adults > 0 && children > 0 && (
+                  <>
+                    <div className="col-span-2 mt-2 text-sm text-gray-600">
+                      Adults pay twice as much as children, making this a
+                      family-friendly pricing option.
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </TabsContent>
     </Tabs>
   );

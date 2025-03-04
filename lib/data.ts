@@ -15,6 +15,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: calculatePercentage("70+18%"),
         lowSeasonCost: calculatePercentage("70+18%"),
+        childHighSeasonCost: calculatePercentage("20+18%"),
+        childLowSeasonCost: calculatePercentage("20+18%"),
       },
       {
         id: "serengeti-balloon",
@@ -22,6 +24,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "serengeti-walking",
@@ -29,6 +33,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -44,6 +50,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: 200,
         lowSeasonCost: 100,
+        childHighSeasonCost: 100,
+        childLowSeasonCost: 50,
       },
       {
         id: "masai-mara-balloon",
@@ -51,6 +59,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "masai-mara-walking",
@@ -58,6 +68,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -73,6 +85,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: 60,
         lowSeasonCost: 60,
+        childHighSeasonCost: 30,
+        childLowSeasonCost: 30,
       },
       {
         id: "lake-nakuru-balloon",
@@ -80,6 +94,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "lake-nakuru-walking",
@@ -87,6 +103,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -103,6 +121,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: 26,
         lowSeasonCost: 26,
+        childHighSeasonCost: 13,
+        childLowSeasonCost: 13,
       },
       {
         id: "lake-naivasha-balloon",
@@ -110,6 +130,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "lake-naivasha-walking",
@@ -117,6 +139,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -133,6 +157,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: 60,
         lowSeasonCost: 60,
+        childHighSeasonCost: 30,
+        childLowSeasonCost: 30,
       },
       {
         id: "amboseli-balloon",
@@ -140,6 +166,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "amboseli-walking",
@@ -147,6 +175,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -163,6 +193,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive with experienced guide",
         highSeasonCost: calculatePercentage("70+18%"),
         lowSeasonCost: calculatePercentage("70+18%"),
+        childHighSeasonCost: calculatePercentage("35+18%"),
+        childLowSeasonCost: calculatePercentage("35+18%"),
       },
       {
         id: "nyerere-balloon",
@@ -170,6 +202,8 @@ export const PLACES: Place[] = [
         description: "Sunrise hot air balloon ride over the plains",
         highSeasonCost: 550,
         lowSeasonCost: 450,
+        childHighSeasonCost: 275,
+        childLowSeasonCost: 225,
       },
       {
         id: "nyerere-walking",
@@ -177,6 +211,8 @@ export const PLACES: Place[] = [
         description: "Guided walking safari with armed ranger",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
     ],
   },
@@ -192,6 +228,8 @@ export const PLACES: Place[] = [
         description: "Full day exploring the crater floor",
         highSeasonCost: calculatePercentage("250+18%"),
         lowSeasonCost: calculatePercentage("250+18%"),
+        childHighSeasonCost: 0,
+        childLowSeasonCost: 0,
       },
       {
         id: "ngorongoro-hiking",
@@ -199,6 +237,8 @@ export const PLACES: Place[] = [
         description: "Guided hike along the crater rim",
         highSeasonCost: calculatePercentage("60+18%"),
         lowSeasonCost: calculatePercentage("60+18%"),
+        childHighSeasonCost: calculatePercentage("20+18%"),
+        childLowSeasonCost: calculatePercentage("20+18%"),
       },
     ],
   },
@@ -213,6 +253,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive focusing on elephants",
         highSeasonCost: calculatePercentage("50+18%"),
         lowSeasonCost: calculatePercentage("50+18%"),
+        childHighSeasonCost: calculatePercentage("15+18%"),
+        childLowSeasonCost: calculatePercentage("15+18%"),
       },
       {
         id: "tarangire-night-safari",
@@ -220,6 +262,8 @@ export const PLACES: Place[] = [
         description: "Evening game drive to spot nocturnal animals",
         highSeasonCost: 130,
         lowSeasonCost: 100,
+        childHighSeasonCost: 65,
+        childLowSeasonCost: 50,
       },
     ],
   },
@@ -234,6 +278,8 @@ export const PLACES: Place[] = [
         description: "Full day game drive focusing on elephants",
         highSeasonCost: calculatePercentage("50+18%"),
         lowSeasonCost: calculatePercentage("50+18%"),
+        childHighSeasonCost: calculatePercentage("15+18%"),
+        childLowSeasonCost: calculatePercentage("15+18%"),
       },
       {
         id: "arusha-night-safari",
@@ -241,6 +287,8 @@ export const PLACES: Place[] = [
         description: "Evening game drive to spot nocturnal animals",
         highSeasonCost: 130,
         lowSeasonCost: 100,
+        childHighSeasonCost: 65,
+        childLowSeasonCost: 50,
       },
     ],
   },
@@ -255,6 +303,8 @@ export const PLACES: Place[] = [
         description: "Half day game drive around the lake",
         highSeasonCost: calculatePercentage("50+18%"),
         lowSeasonCost: calculatePercentage("50+18%"),
+        childHighSeasonCost: calculatePercentage("15+18%"),
+        childLowSeasonCost: calculatePercentage("15+18%"),
       },
       {
         id: "manyara-canoe",
@@ -262,6 +312,8 @@ export const PLACES: Place[] = [
         description: "Canoe trip on Lake Manyara",
         highSeasonCost: 110,
         lowSeasonCost: 85,
+        childHighSeasonCost: 55,
+        childLowSeasonCost: 42.5,
       },
     ],
   },
@@ -276,6 +328,8 @@ export const PLACES: Place[] = [
         description: "Relaxing day at the beach with snorkeling",
         highSeasonCost: 60,
         lowSeasonCost: 40,
+        childHighSeasonCost: 30,
+        childLowSeasonCost: 20,
       },
       {
         id: "zanzibar-stone-town",
@@ -283,6 +337,8 @@ export const PLACES: Place[] = [
         description: "Guided tour of historic Stone Town",
         highSeasonCost: 80,
         lowSeasonCost: 60,
+        childHighSeasonCost: 40,
+        childLowSeasonCost: 30,
       },
       {
         id: "zanzibar-spice-tour",
@@ -290,6 +346,8 @@ export const PLACES: Place[] = [
         description: "Visit local spice farms and plantations",
         highSeasonCost: 70,
         lowSeasonCost: 50,
+        childHighSeasonCost: 35,
+        childLowSeasonCost: 25,
       },
     ],
   },
@@ -1159,4 +1217,5 @@ export const ACCOMMODATIONS: Accommodation[] = [
   },
 ];
 
-export const CONCESSION_FEE = 60; // $60 per person
+export const CONCESSION_FEE = calculatePercentage("50+18%"); // $60 per person
+export const CHILD_CONCESSION_FEE = calculatePercentage("10+18%"); // $30 per child

@@ -1,10 +1,11 @@
-// Define types for our data
 export interface Activity {
   id: string;
   name: string;
   description: string;
   highSeasonCost: number;
   lowSeasonCost: number;
+  childHighSeasonCost: number;
+  childLowSeasonCost: number;
 }
 
 export interface Place {
