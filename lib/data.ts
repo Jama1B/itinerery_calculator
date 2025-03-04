@@ -358,7 +358,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "osero-serengeti-camp", // Done
     name: "Osero Serengeti Camp",
     description: "5-star lodge with panoramic views of the plains",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -389,7 +389,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "osupuko-tented-camp", //Done
     name: "Osopuko Tented Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -420,7 +420,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "serengeti-heritage-camp", //Done
     name: "Serengeti Heritage Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -452,7 +452,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "nyota-luxury-tented-camp", //Done
     name: "Nyoa Luxury Tented Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -483,7 +483,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "sero-camp", //Done
     name: "Sero Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -514,7 +514,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "african-safari-ikoma-camp", //Done
     name: "African Safari Ikoma Tented Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Serengeti National Park",
+    location: ["serengeti", "masai-mara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -545,7 +545,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "tarangire-sopa-lodge", //Done
     name: "Tarangire Sopa Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Tarangire National Park",
+    location: ["tarangire"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -576,7 +576,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "masai-mara-sopa-lodge", //Done
     name: "Masai Mara Sopa Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Masai Mara National Park",
+    location: ["masai-mara"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -607,7 +607,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "lake-nakuru-sopa-lodge", //Done
     name: "Lake Nakuru Sopa Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Lake Nakuru National Park",
+    location: ["lake-nakuru"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -638,7 +638,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "lake-naivasha-sopa-lodge", //Done
     name: "Lake Naivasha Sopa Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Lake Naivasha National Park",
+    location: ["lake-naivasha", "nakuru"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -669,7 +669,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "amboseli-sopa-standard-lodge", //Done
     name: "Amboseli Sopa Standard Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Amboseli National Park",
+    location: ["amboseli"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -700,7 +700,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "amboseli-sopa-premium-lodge", //Done
     name: "Amboseli Sopa Premium Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Amboseli National Park",
+    location: ["amboseli"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -731,7 +731,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "samburu-sopa-lodge", //Done
     name: "Samburu Sopa Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Samburu National Park",
+    location: ["samburu", "shaba", "buffalo-springs"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -762,7 +762,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "jambo-mara-wooden-cottage-lodge", //Done
     name: "Jambo Mara Wooden Cottage Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Masai Mara National Park",
+    location: ["masai-mara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -786,7 +786,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "jambo-mara-glass-cottage-lodge", //Done
     name: "Jambo Mara Glass Cottage Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Masai Mara National Park",
+    location: ["masai-mara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -817,7 +817,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "jambo-mara-superior-delux-lodge", //Done
     name: "Jambo Mara Superior Delux Lodge",
     description: "Authentic safari experience with comfortable tents",
-    location: "Masai Mara National Park",
+    location: ["masai-mara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -848,7 +848,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "sentrim-mara-camp", //Done
     name: "Sentrim Mara Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Masai Mara National Park",
+    location: ["masai-mara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -879,7 +879,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "sentrim-amboseli-camp", //Done
     name: "Sentrim Amboseli Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Amboseli National Park",
+    location: ["amboseli"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -910,7 +910,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "sentrim-tsavo-camp", //Done
     name: "Sentrim Tsavo Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Tsavo National Park",
+    location: ["tsavo-east", "tsavo-west"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -941,7 +941,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "sentrim-elementaita-camp", //Done
     name: "Sentrim Elementaita Camp",
     description: "Authentic safari experience with comfortable tents",
-    location: "Elementaita National Park",
+    location: ["elementaita", "nakuru"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -972,7 +972,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "eileens-tree-inn", //Done
     name: "Eileen's Trees Inn",
     description: "Luxury lodge on the crater rim with stunning views",
-    location: "Ngorongoro Crater",
+    location: ["ngorongoro", "tarangire", "lake-manyara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1003,7 +1003,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "farm-of-dreams-lodge", //Done
     name: "Farm of Dreams Lodge",
     description: "Colonial-style farm house with beautiful gardens",
-    location: "Ngorongoro Crater",
+    location: ["ngorongoro", "tarangire", "lake-manyara"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1034,7 +1034,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "ngare-lodge", //Done
     name: "Ngare Sero Mountain Lodge",
     description: "Colonial-style farm house with beautiful gardens",
-    location: "Tarangire National Park",
+    location: ["lake-manyara", "ngorongoro", "tarangire"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1065,7 +1065,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "green-mountain-lodge", //Done
     name: "Green Mountain Lodge",
     description: "Unique rooms built into baobab trees",
-    location: "Arusha",
+    location: ["Arusha"],
     includesFullBoard: true,
     inPark: true,
     roomTypes: [
@@ -1096,7 +1096,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "marera-valley-lodge", //Done
     name: "Marera Valley Lodge",
     description: "Lodge overlooking Lake Manyara and the Rift Valley",
-    location: "karatu",
+    location: ["karatu", "lake-manyara", "ngorongoro", "tarangire"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1127,7 +1127,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "neptune-ngorongoro-luxury-lodge", //Done
     name: "Neptune Ngorongoro Luxury Lodge",
     description: "Beachfront resort with white sand beaches",
-    location: "Ngorongoro",
+    location: ["Ngorongoro"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1158,7 +1158,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     id: "lila-tanzania-lodge", //Done
     name: "Lilac Tanzania Hotel",
     description: "Historic hotel in the heart of Stone Town",
-    location: "karatu",
+    location: ["karatu", "lake-manyara", "ngorongoro", "tarangire"],
     includesFullBoard: true,
     inPark: false,
     roomTypes: [
@@ -1190,7 +1190,7 @@ export const ACCOMMODATIONS: Accommodation[] = [
     name: "Arusha Mountain Lodge",
     description: "Cozy lodge with views of Mount Meru",
     includesFullBoard: true,
-    inPark: true,
+    inPark: false,
     roomTypes: [
       {
         id: "arusha-mountain-single",
@@ -1212,6 +1212,36 @@ export const ACCOMMODATIONS: Accommodation[] = [
         maxOccupancy: 4,
         highSeasonCost: 420,
         lowSeasonCost: 330,
+      },
+    ],
+  },
+  {
+    id: "serengeti-heritage-camp",
+    name: "Serengeti Heritage Camp",
+    description: "Cozy lodge with views of Mount Meru",
+    includesFullBoard: true,
+    inPark: true,
+    roomTypes: [
+      {
+        id: "serengeti-heritage-single",
+        name: "Single Room",
+        maxOccupancy: 1,
+        highSeasonCost: 140,
+        lowSeasonCost: 140,
+      },
+      {
+        id: "serengeti-heritage-double",
+        name: "Double Room",
+        maxOccupancy: 2,
+        highSeasonCost: 270,
+        lowSeasonCost: 270,
+      },
+      {
+        id: "serengeti-heritage-family",
+        name: "Family Room",
+        maxOccupancy: 4,
+        highSeasonCost: 375,
+        lowSeasonCost: 375,
       },
     ],
   },

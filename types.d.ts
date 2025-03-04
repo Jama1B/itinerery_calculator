@@ -27,7 +27,7 @@ export interface Accommodation {
   id: string;
   name: string;
   description: string;
-  location?: string;
+  location?: string[];
   includesFullBoard: boolean;
   inPark: boolean;
   roomTypes: RoomType[];

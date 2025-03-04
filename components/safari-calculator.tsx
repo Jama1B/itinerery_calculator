@@ -71,7 +71,7 @@ export default function SafariCalculator() {
   const { adults, children, setAdults, setChildren, getTotalClients } =
     useClientStore();
   const [itinerary, setItinerary] = useState<DayItinerary[]>([]);
-  const [profitAmount, setProfitAmount] = useState<number>(500);
+  const [profitAmount, setProfitAmount] = useState<number>(700);
   const [activeTab, setActiveTab] = useState<string>("setup");
   const [isHighSeason, setIsHighSeason] = useState<boolean>(true);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState<boolean>(false);
@@ -1550,7 +1550,12 @@ export default function SafariCalculator() {
 
                 <Separator className="col-span-2" />
 
-                <div className="font-bold">Total:</div>
+                <div className="font-bold">
+                  Total:
+                  <p className="font-normal text-sm text-gray-500">
+                    For {adults} adult and {children} children
+                  </p>
+                </div>
                 <div className="text-right font-bold">
                   {formatCurrency(totals.total)}
                 </div>
@@ -1571,7 +1576,12 @@ export default function SafariCalculator() {
               <div className="grid grid-cols-2 gap-4">
                 {adults > 0 && (
                   <>
-                    <div>Cost Per Adult:</div>
+                    <div>
+                      Cost Per Adult:
+                      <p className="font-normal text-sm text-gray-500">
+                        {adults} adult
+                      </p>
+                    </div>
                     <div className="text-right">
                       {formatCurrency(totals.perAdult)}
                     </div>
@@ -1580,7 +1590,12 @@ export default function SafariCalculator() {
 
                 {children > 0 && (
                   <>
-                    <div>Cost Per Child:</div>
+                    <div>
+                      Cost Per Child:
+                      <p className="font-normal text-sm text-gray-500">
+                        {children} children
+                      </p>
+                    </div>
                     <div className="text-right">
                       {formatCurrency(totals.perChild)}
                     </div>
