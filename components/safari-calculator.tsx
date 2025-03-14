@@ -81,7 +81,7 @@ export default function SafariCalculator() {
   } = useClientStore();
 
   const [itinerary, setItinerary] = useState<DayItinerary[]>([]);
-  const [profitAmount, setProfitAmount] = useState<number>(500);
+  const [profitAmount, setProfitAmount] = useState<number>(700);
   const [activeTab, setActiveTab] = useState<string>("setup");
   const [isHighSeason, setIsHighSeason] = useState<boolean>(true);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState<boolean>(false);
