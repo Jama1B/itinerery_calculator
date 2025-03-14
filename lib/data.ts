@@ -14,9 +14,9 @@ export const PLACES: Place[] = [
         name: "Game Drive",
         description: "Full day game drive with experienced guide",
         highSeasonCost: calculatePercentage("70+18%"),
-        lowSeasonCost: calculatePercentage("70+18%"),
+        lowSeasonCost: calculatePercentage("30+18%"),
         childHighSeasonCost: calculatePercentage("20+18%"),
-        childLowSeasonCost: calculatePercentage("20+18%"),
+        childLowSeasonCost: calculatePercentage("10+18%"),
       },
       {
         id: "serengeti-balloon",
@@ -236,9 +236,9 @@ export const PLACES: Place[] = [
         name: "Crater Rim Hike",
         description: "Guided hike along the crater rim",
         highSeasonCost: calculatePercentage("60+18%"),
-        lowSeasonCost: calculatePercentage("60+18%"),
+        lowSeasonCost: calculatePercentage("30+18%"),
         childHighSeasonCost: calculatePercentage("20+18%"),
-        childLowSeasonCost: calculatePercentage("20+18%"),
+        childLowSeasonCost: calculatePercentage("10+18%"),
       },
     ],
   },
@@ -314,6 +314,22 @@ export const PLACES: Place[] = [
         lowSeasonCost: 85,
         childHighSeasonCost: 55,
         childLowSeasonCost: 42.5,
+      },
+    ],
+  },
+  {
+    id: "mikumi",
+    name: "Mikumi National Park",
+    description: "Famous for tree-climbing lions and flamingos",
+    activities: [
+      {
+        id: "mikumi_game_drive",
+        name: "Game Drive",
+        description: "Half day game drive around the lake",
+        highSeasonCost: calculatePercentage("30+18%"),
+        lowSeasonCost: calculatePercentage("30+18%"),
+        childHighSeasonCost: calculatePercentage("10+18%"),
+        childLowSeasonCost: calculatePercentage("10+18%"),
       },
     ],
   },
@@ -1285,6 +1301,36 @@ export const ACCOMMODATIONS: Accommodation[] = [
     ],
   },
   {
+    id: "bustian-camp-mikumi",
+    name: "Camp Bustian Mikumi",
+    description: "Cozy lodge with views of Mount Meru",
+    includesFullBoard: true,
+    inPark: false,
+    roomTypes: [
+      {
+        id: "bustian-camp-mikumi-single",
+        name: "Single Room",
+        maxOccupancy: 1,
+        highSeasonCost: 60,
+        lowSeasonCost: 60,
+      },
+      {
+        id: "bustian-camp-mikumi-double",
+        name: "Double Room",
+        maxOccupancy: 2,
+        highSeasonCost: 120,
+        lowSeasonCost: 120,
+      },
+      {
+        id: "bustian-camp-mikumi-family",
+        name: "Family Room",
+        maxOccupancy: 4,
+        highSeasonCost: 375,
+        lowSeasonCost: 375,
+      },
+    ],
+  },
+  {
     id: "tembo-house-hotel",
     name: "Tembo House Hotel",
     description: "Cozy lodge with views of Mount Meru",
@@ -1350,3 +1396,4 @@ export const ACCOMMODATIONS: Accommodation[] = [
 
 export const CONCESSION_FEE = calculatePercentage("50+18%"); // $60 per person
 export const CHILD_CONCESSION_FEE = calculatePercentage("10+18%"); // $30 per child
+export const VEHICLE_CAPACITY = 7; // Each vehicle can carry 7 clients

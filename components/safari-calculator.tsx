@@ -62,16 +62,26 @@ import {
   CHILD_CONCESSION_FEE,
   CONCESSION_FEE,
   PLACES,
+  VEHICLE_CAPACITY,
 } from "@/lib/data";
-
-// Define types for our data
 
 export default function SafariCalculator() {
   const [days, setDays] = useState<number>(3);
-  const { adults, children, setAdults, setChildren, getTotalClients } =
-    useClientStore();
+  const {
+    adults,
+    children,
+    setAdults,
+    setChildren,
+    getTotalClients,
+    useManualVehicles,
+    vehicleCount,
+    setUseManualVehicles,
+    setVehicleCount,
+    getVehicleCount,
+  } = useClientStore();
+
   const [itinerary, setItinerary] = useState<DayItinerary[]>([]);
-  const [profitAmount, setProfitAmount] = useState<number>(700);
+  const [profitAmount, setProfitAmount] = useState<number>(500);
   const [activeTab, setActiveTab] = useState<string>("setup");
   const [isHighSeason, setIsHighSeason] = useState<boolean>(true);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState<boolean>(false);
@@ -364,11 +374,13 @@ export default function SafariCalculator() {
         place.selectedActivities.forEach((activityId) => {
           const activity = getActivityById(place.placeId, activityId);
           if (activity) {
-            // Special handling for Ngorongoro Crater Floor Tour - charged per group
+            // Special handling for Ngorongoro Crater Floor Tour - charged per vehicle
             if (activityId === "ngorongoro-crater-tour") {
-              adultActivitiesCost += isHighSeason
-                ? activity.highSeasonCost
-                : activity.lowSeasonCost;
+              const vehiclesNeeded = getVehicleCount(getTotalClients());
+              adultActivitiesCost +=
+                (isHighSeason
+                  ? activity.highSeasonCost
+                  : activity.lowSeasonCost) * vehiclesNeeded;
             } else {
               // All other activities - charged per person
               adultActivitiesCost +=
@@ -505,6 +517,15 @@ export default function SafariCalculator() {
     doc.text(`Number of Adults: ${adults}`, 20, 45);
     doc.text(`Number of Children (<15): ${children}`, 20, 55);
     doc.text(`Season: ${isHighSeason ? "High Season" : "Low Season"}`, 20, 65);
+    doc.text(
+      `Vehicles: ${getVehicleCount(getTotalClients())} ${
+        useManualVehicles
+          ? "(manually set)"
+          : `(${VEHICLE_CAPACITY} clients per vehicle)`
+      }`,
+      20,
+      75
+    );
 
     let yPos = 80;
 
@@ -829,6 +850,82 @@ export default function SafariCalculator() {
               </div>
             </div>
 
+            <div className="mt-4 p-3 bg-blue-50 rounded-md">
+              <div className="flex items-center gap-2 mb-2">
+                <Car className="h-4 w-4" />
+                <h4 className="font-medium">Vehicle Information</h4>
+              </div>
+
+              {/* Vehicle Mode Selection */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-3">
+                <Label
+                  htmlFor="vehicle-toggle"
+                  className="mb-1 sm:mb-0 text-sm"
+                >
+                  Vehicle Calculation:
+                </Label>
+                <div className="flex items-center space-x-2">
+                  <span
+                    className={
+                      !useManualVehicles
+                        ? "font-medium text-sm"
+                        : "text-gray-500 text-sm"
+                    }
+                  >
+                    Automatic
+                  </span>
+                  <Switch
+                    id="vehicle-toggle"
+                    checked={useManualVehicles}
+                    onCheckedChange={setUseManualVehicles}
+                  />
+                  <span
+                    className={
+                      useManualVehicles
+                        ? "font-medium text-sm"
+                        : "text-gray-500 text-sm"
+                    }
+                  >
+                    Manual
+                  </span>
+                </div>
+              </div>
+
+              {/* Show appropriate vehicle information based on mode */}
+              {useManualVehicles ? (
+                <div className="space-y-2">
+                  <Label htmlFor="vehicle-count" className="text-sm">
+                    Number of Vehicles
+                  </Label>
+                  <Input
+                    id="vehicle-count"
+                    type="number"
+                    min="1"
+                    value={vehicleCount}
+                    onChange={(e) =>
+                      setVehicleCount(
+                        Math.max(1, Number.parseInt(e.target.value) || 1)
+                      )
+                    }
+                    className="max-w-[150px]"
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  Each vehicle can accommodate up to {VEHICLE_CAPACITY} clients.
+                  Your group will require{" "}
+                  <span className="font-bold">
+                    {getVehicleCount(getTotalClients())}
+                  </span>{" "}
+                  vehicle(s).
+                </p>
+              )}
+
+              <p className="text-sm text-gray-600 mt-2">
+                Note: Ngorongoro Crater Floor Tour is charged per vehicle.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <Label htmlFor="season-toggle" className="mb-1 sm:mb-0">
                 Season:
@@ -1058,7 +1155,7 @@ export default function SafariCalculator() {
                                               {" "}
                                               {activity.id ===
                                               "ngorongoro-crater-tour"
-                                                ? "per group"
+                                                ? "per vehicle"
                                                 : "per adult"}
                                             </span>
                                           </span>
@@ -1090,20 +1187,44 @@ export default function SafariCalculator() {
                                           <p className="text-xs text-gray-500 sm:hidden">
                                             {activity.id ===
                                             "ngorongoro-crater-tour"
-                                              ? "Charged per group"
+                                              ? `Charged per vehicle (${getVehicleCount(
+                                                  getTotalClients()
+                                                )} vehicles needed)`
                                               : "Charged per person"}
                                           </p>
-                                          {activity.id !==
-                                            "ngorongoro-crater-tour" && (
+                                          {activity.id ===
+                                          "ngorongoro-crater-tour" ? (
                                             <p className="text-xs text-green-700">
-                                              Child price:{" "}
+                                              Total:{" "}
                                               {formatCurrency(
-                                                isHighSeason
-                                                  ? activity.childHighSeasonCost
-                                                  : activity.childLowSeasonCost
+                                                (isHighSeason
+                                                  ? activity.highSeasonCost
+                                                  : activity.lowSeasonCost) *
+                                                  getVehicleCount(
+                                                    getTotalClients()
+                                                  )
                                               )}{" "}
-                                              per child
+                                              for{" "}
+                                              {getVehicleCount(
+                                                getTotalClients()
+                                              )}{" "}
+                                              vehicle(s)
+                                              {useManualVehicles &&
+                                                " (manually set)"}
                                             </p>
+                                          ) : (
+                                            activity.id !==
+                                              "ngorongoro-crater-tour" && (
+                                              <p className="text-xs text-green-700">
+                                                Child price:{" "}
+                                                {formatCurrency(
+                                                  isHighSeason
+                                                    ? activity.childHighSeasonCost
+                                                    : activity.childLowSeasonCost
+                                                )}{" "}
+                                                per child
+                                              </p>
+                                            )
                                           )}
                                         </div>
                                       </CollapsibleContent>
@@ -1398,6 +1519,34 @@ export default function SafariCalculator() {
                             </>
                           )}
 
+                        {day.places.some((p) =>
+                          p.selectedActivities.includes(
+                            "ngorongoro-crater-tour"
+                          )
+                        ) && (
+                          <>
+                            <div>
+                              Vehicles needed (
+                              {getVehicleCount(getTotalClients())}):
+                            </div>
+                            <div className="text-right font-medium">
+                              {formatCurrency(
+                                getVehicleCount(getTotalClients()) *
+                                  (isHighSeason
+                                    ? getActivityById(
+                                        "ngorongoro",
+                                        "ngorongoro-crater-tour"
+                                      )?.highSeasonCost || 0
+                                    : getActivityById(
+                                        "ngorongoro",
+                                        "ngorongoro-crater-tour"
+                                      )?.lowSeasonCost || 0)
+                              )}
+                              {useManualVehicles && " (manually set)"}
+                            </div>
+                          </>
+                        )}
+
                         <div>Transportation:</div>
                         <div className="text-right font-medium">
                           {formatCurrency(day.transportationCost)}
@@ -1550,12 +1699,7 @@ export default function SafariCalculator() {
 
                 <Separator className="col-span-2" />
 
-                <div className="font-bold">
-                  Total:
-                  <p className="font-normal text-sm text-gray-500">
-                    For {adults} adult and {children} children
-                  </p>
-                </div>
+                <div className="font-bold">Total:</div>
                 <div className="text-right font-bold">
                   {formatCurrency(totals.total)}
                 </div>
@@ -1576,12 +1720,7 @@ export default function SafariCalculator() {
               <div className="grid grid-cols-2 gap-4">
                 {adults > 0 && (
                   <>
-                    <div>
-                      Cost Per Adult:
-                      <p className="font-normal text-sm text-gray-500">
-                        {adults} adult
-                      </p>
-                    </div>
+                    <div>Cost Per Adult:</div>
                     <div className="text-right">
                       {formatCurrency(totals.perAdult)}
                     </div>
@@ -1590,12 +1729,7 @@ export default function SafariCalculator() {
 
                 {children > 0 && (
                   <>
-                    <div>
-                      Cost Per Child:
-                      <p className="font-normal text-sm text-gray-500">
-                        {children} children
-                      </p>
-                    </div>
+                    <div>Cost Per Child:</div>
                     <div className="text-right">
                       {formatCurrency(totals.perChild)}
                     </div>
@@ -1610,6 +1744,47 @@ export default function SafariCalculator() {
                     </div>
                   </>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Vehicle Information</CardTitle>
+              <CardDescription>
+                Number of vehicles required for your safari
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>Total Clients:</div>
+                  <div className="text-right">
+                    {getTotalClients()} ({adults} adults, {children} children)
+                  </div>
+
+                  {!useManualVehicles && (
+                    <>
+                      <div>Vehicle Capacity:</div>
+                      <div className="text-right">
+                        {VEHICLE_CAPACITY} clients per vehicle
+                      </div>
+                    </>
+                  )}
+
+                  <div className="font-medium">Vehicles Required:</div>
+                  <div className="text-right font-medium">
+                    {getVehicleCount(getTotalClients())}
+                    {useManualVehicles && " (manually set)"}
+                  </div>
+                </div>
+
+                <div className="text-sm text-gray-600 mt-2 p-2 bg-blue-50 rounded-md">
+                  <p>
+                    Note: The Ngorongoro Crater Floor Tour is charged per
+                    vehicle. Each vehicle can enter the crater with its own
+                    guide and permit.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
