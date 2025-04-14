@@ -442,6 +442,23 @@ export const ACCOMMODATIONS: Accommodation[] = [
     ],
   },
   {
+    id: "public-camp-site", //Done
+    name: "Public Camp Site",
+    description: "Authentic safari experience with comfortable tents",
+    location: ["serengeti", "masai-mara"],
+    includesFullBoard: true,
+    inPark: false,
+    roomTypes: [
+      {
+        id: "serengeti-heritage-single",
+        name: "Single Room",
+        maxOccupancy: 1,
+        highSeasonCost: 35,
+        lowSeasonCost: 35,
+      },
+    ],
+  },
+  {
     id: "serengeti-heritage-camp", //Done
     name: "Serengeti Heritage Camp",
     description: "Authentic safari experience with comfortable tents",
@@ -1378,6 +1395,37 @@ export const ACCOMMODATIONS: Accommodation[] = [
       // },
       {
         id: "serengeti-heritage-double",
+        name: "Double Room",
+        maxOccupancy: 2,
+        highSeasonCost: 120,
+        lowSeasonCost: 120,
+      },
+      // {
+      //   id: "serengeti-heritage-family",
+      //   name: "Family Room",
+      //   maxOccupancy: 4,
+      //   highSeasonCost: 375,
+      //   lowSeasonCost: 375,
+      // },
+    ],
+  },
+  {
+    id: "sunset-kendwa",
+    name: "Sunset Kendwa",
+    description: "Zanzibar beachfront resort with white sand beaches",
+    location: ["zanzibar"],
+    includesFullBoard: true,
+    inPark: true,
+    roomTypes: [
+      // {
+      //   id: "serengeti-heritage-single",
+      //   name: "Single Room",
+      //   maxOccupancy: 1,
+      //   highSeasonCost: 140,
+      //   lowSeasonCost: 140,
+      // },
+      {
+        id: "sunset-kendwa-double",
         name: "Double Room",
         maxOccupancy: 2,
         highSeasonCost: 120,

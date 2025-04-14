@@ -475,7 +475,6 @@ export default function SafariCalculator() {
       accommodation: totalAccommodation,
       adultActivities: totalAdultActivities,
       childActivities: totalChildActivities,
-      activities: totalActivities,
       transportation: totalTransportation,
       adultConcessionFees: totalAdultConcessionFees,
       childConcessionFees: totalChildConcessionFees,
@@ -1496,7 +1495,23 @@ export default function SafariCalculator() {
                               </div>
                               <div className="text-right font-medium">
                                 {formatCurrency(
-                                  calculateDayCosts(day).adultActivitiesCost
+                                  calculateDayCosts(day).adultActivitiesCost -
+                                    (day.places.some((p) =>
+                                      p.selectedActivities.includes(
+                                        "ngorongoro-crater-tour"
+                                      )
+                                    )
+                                      ? getVehicleCount(getTotalClients()) *
+                                        (isHighSeason
+                                          ? getActivityById(
+                                              "ngorongoro",
+                                              "ngorongoro-crater-tour"
+                                            )?.highSeasonCost || 0
+                                          : getActivityById(
+                                              "ngorongoro",
+                                              "ngorongoro-crater-tour"
+                                            )?.lowSeasonCost || 0)
+                                      : 0)
                                 )}
                               </div>
                             </>
@@ -1526,8 +1541,8 @@ export default function SafariCalculator() {
                         ) && (
                           <>
                             <div>
-                              Vehicles needed (
-                              {getVehicleCount(getTotalClients())}):
+                              Ngorongoro Crater Tour (
+                              {getVehicleCount(getTotalClients())} vehicles):
                             </div>
                             <div className="text-right font-medium">
                               {formatCurrency(
@@ -1644,11 +1659,12 @@ export default function SafariCalculator() {
                     />
                   </div>
                   <div className="flex justify-end space-x-2">
-                    <DialogClose asChild>
-                      <Button type="button" variant="secondary">
-                        Close
-                      </Button>
-                    </DialogClose>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsExportDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
                     <Button onClick={handleExport}>Export</Button>
                   </div>
                 </div>
@@ -1672,7 +1688,9 @@ export default function SafariCalculator() {
 
                 <div>Activities:</div>
                 <div className="text-right">
-                  {formatCurrency(totals.activities)}
+                  {formatCurrency(
+                    totals.adultActivities + totals.childActivities
+                  )}
                 </div>
 
                 <div>Transportation:</div>
