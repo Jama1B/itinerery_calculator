@@ -1,7 +1,8 @@
-// This is a simple in-memory database for demonstration
-// In a real application, you would use a proper database like MongoDB, PostgreSQL, etc.
-
+import { neon } from "@neondatabase/serverless";
 import type { DayItinerary } from "@/types/safaris";
+
+// Initialize the Neon client
+const sql = neon(process.env.DATABASE_URL!);
 
 export interface SavedItinerary {
   id: string;
@@ -19,17 +20,6 @@ export interface SavedItinerary {
     itinerary: DayItinerary[];
   };
 }
-
-// In-memory database
-let savedItineraries: SavedItinerary[] = [];
-
-// Generate a simple ID
-const generateId = () => {
-  return (
-    Math.random().toString(36).substring(2, 15) +
-    Math.random().toString(36).substring(2, 15)
-  );
-};
 
 // Save an itinerary
 export async function saveItinerary(
@@ -50,55 +40,141 @@ export async function saveItinerary(
 
   // If we have an existing ID, update that itinerary
   if (existingId) {
-    const index = savedItineraries.findIndex(
-      (itinerary) => itinerary.id === existingId
-    );
+    const result = await sql`
+      UPDATE itineraries
+      SET 
+        name = ${name},
+        updated_at = ${now.toISOString()},
+        days = ${data.days},
+        adults = ${data.adults},
+        children = ${data.children},
+        profit_amount = ${data.profitAmount},
+        is_high_season = ${data.isHighSeason},
+        use_manual_vehicles = ${data.useManualVehicles},
+        vehicle_count = ${data.vehicleCount},
+        itinerary = ${JSON.stringify(data.itinerary)}
+      WHERE id = ${existingId}
+      RETURNING id, name, created_at, updated_at
+    `;
 
-    if (index !== -1) {
-      const updatedItinerary: SavedItinerary = {
-        ...savedItineraries[index],
-        name,
-        updatedAt: now,
-        data,
-      };
-
-      savedItineraries[index] = updatedItinerary;
-      return updatedItinerary;
+    if (result.length === 0) {
+      throw new Error("Itinerary not found");
     }
+
+    const updatedItinerary = result[0];
+
+    return {
+      id: updatedItinerary.id.toString(),
+      name: updatedItinerary.name,
+      createdAt: new Date(updatedItinerary.created_at),
+      updatedAt: new Date(updatedItinerary.updated_at),
+      data,
+    };
   }
 
   // Otherwise create a new itinerary
-  const newItinerary: SavedItinerary = {
-    id: generateId(),
-    name,
-    createdAt: now,
-    updatedAt: now,
+  const result = await sql`
+    INSERT INTO itineraries (
+      name, 
+      days, 
+      adults, 
+      children, 
+      profit_amount, 
+      is_high_season, 
+      use_manual_vehicles, 
+      vehicle_count, 
+      itinerary
+    )
+    VALUES (
+      ${name},
+      ${data.days},
+      ${data.adults},
+      ${data.children},
+      ${data.profitAmount},
+      ${data.isHighSeason},
+      ${data.useManualVehicles},
+      ${data.vehicleCount},
+      ${JSON.stringify(data.itinerary)}
+    )
+    RETURNING id, name, created_at, updated_at
+  `;
+
+  const newItinerary = result[0];
+
+  return {
+    id: newItinerary.id.toString(),
+    name: newItinerary.name,
+    createdAt: new Date(newItinerary.created_at),
+    updatedAt: new Date(newItinerary.updated_at),
     data,
   };
-
-  savedItineraries.push(newItinerary);
-  return newItinerary;
 }
 
 // Get all itineraries
 export async function getItineraries(): Promise<SavedItinerary[]> {
-  return [...savedItineraries].sort(
-    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
-  );
+  const result = await sql`
+    SELECT * FROM itineraries
+    ORDER BY updated_at DESC
+  `;
+
+  return result.map((row) => ({
+    id: row.id.toString(),
+    name: row.name,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    data: {
+      days: row.days,
+      adults: row.adults,
+      children: row.children,
+      profitAmount: Number.parseFloat(row.profit_amount),
+      isHighSeason: row.is_high_season,
+      useManualVehicles: row.use_manual_vehicles,
+      vehicleCount: row.vehicle_count,
+      itinerary: row.itinerary,
+    },
+  }));
 }
 
 // Get a specific itinerary by ID
 export async function getItineraryById(
   id: string
 ): Promise<SavedItinerary | null> {
-  return savedItineraries.find((itinerary) => itinerary.id === id) || null;
+  const result = await sql`
+    SELECT * FROM itineraries
+    WHERE id = ${id}
+  `;
+
+  if (result.length === 0) {
+    return null;
+  }
+
+  const row = result[0];
+
+  return {
+    id: row.id.toString(),
+    name: row.name,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    data: {
+      days: row.days,
+      adults: row.adults,
+      children: row.children,
+      profitAmount: Number.parseFloat(row.profit_amount),
+      isHighSeason: row.is_high_season,
+      useManualVehicles: row.use_manual_vehicles,
+      vehicleCount: row.vehicle_count,
+      itinerary: row.itinerary,
+    },
+  };
 }
 
 // Delete an itinerary
 export async function deleteItinerary(id: string): Promise<boolean> {
-  const initialLength = savedItineraries.length;
-  savedItineraries = savedItineraries.filter(
-    (itinerary) => itinerary.id !== id
-  );
-  return savedItineraries.length < initialLength;
+  const result = await sql`
+    DELETE FROM itineraries
+    WHERE id = ${id}
+    RETURNING id
+  `;
+
+  return result.length > 0;
 }
