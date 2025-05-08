@@ -32,6 +32,8 @@ import {
   Trash2,
   Bed,
   BabyIcon as Child,
+  Save,
+  FileDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,21 +49,19 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { calculatePercentage } from "@/lib/utils";
 import { jsPDF } from "jspdf";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogClose,
-} from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent } from "@/components/ui/dialog";
 import { useClientStore } from "@/lib/store";
-import { DayItinerary, RoomAllocation } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+import { SaveItineraryDialog } from "@/components/save-itinerary-dialog";
+import { LoadItineraryDialog } from "@/components/load-itinerary-dialog";
+import type { SavedItinerary } from "@/lib/db";
+import type { DayItinerary, RoomAllocation } from "@/types/safaris";
 import {
-  ACCOMMODATIONS,
-  CHILD_CONCESSION_FEE,
-  CONCESSION_FEE,
   PLACES,
+  ACCOMMODATIONS,
+  CONCESSION_FEE,
+  CHILD_CONCESSION_FEE,
   VEHICLE_CAPACITY,
 } from "@/lib/data";
 
@@ -87,6 +87,13 @@ export default function SafariCalculator() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState<boolean>(false);
   const [tourName, setTourName] = useState<string>("");
 
+  // State for save/load functionality
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState<boolean>(false);
+  const [isLoadDialogOpen, setIsLoadDialogOpen] = useState<boolean>(false);
+  const [currentSavedItinerary, setCurrentSavedItinerary] =
+    useState<SavedItinerary | null>(null);
+  const { toast } = useToast();
+
   // Initialize itinerary when days change
   useEffect(() => {
     initializeItinerary(days);
@@ -108,7 +115,7 @@ export default function SafariCalculator() {
         return day;
       })
     );
-  }, [getTotalClients]); // Now this effect depends on both adults and children
+  }, [getTotalClients, isHighSeason]); // Now this effect depends on both adults and children
 
   const initializeItinerary = (numDays: number) => {
     const newItinerary: DayItinerary[] = [];
@@ -475,6 +482,7 @@ export default function SafariCalculator() {
       accommodation: totalAccommodation,
       adultActivities: totalAdultActivities,
       childActivities: totalChildActivities,
+      activities: totalActivities,
       transportation: totalTransportation,
       adultConcessionFees: totalAdultConcessionFees,
       childConcessionFees: totalChildConcessionFees,
@@ -761,6 +769,97 @@ export default function SafariCalculator() {
     updateItinerary(dayId, "roomAllocation", suggestedAllocation);
   };
 
+  // Save itinerary to database
+  const handleSaveItinerary = async (name: string) => {
+    try {
+      const data = {
+        days,
+        adults,
+        children,
+        profitAmount,
+        isHighSeason,
+        useManualVehicles,
+        vehicleCount,
+        itinerary,
+      };
+
+      const response = await fetch("/api/itinerary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          data,
+          id: currentSavedItinerary?.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save itinerary");
+      }
+
+      const savedItinerary = await response.json();
+      setCurrentSavedItinerary(savedItinerary);
+
+      return savedItinerary;
+    } catch (error) {
+      console.error("Error saving itinerary:", error);
+      throw error;
+    }
+  };
+
+  // Load itinerary from database
+  const handleLoadItinerary = (savedItinerary: SavedItinerary) => {
+    try {
+      const { data } = savedItinerary;
+
+      // Update all state
+      setDays(data.days);
+      setAdults(data.adults);
+      setChildren(data.children);
+      setProfitAmount(data.profitAmount);
+      setIsHighSeason(data.isHighSeason);
+      setUseManualVehicles(data.useManualVehicles);
+      setVehicleCount(data.vehicleCount);
+      setItinerary(data.itinerary);
+      setCurrentSavedItinerary(savedItinerary);
+
+      toast({
+        title: "Itinerary loaded",
+        description: `Successfully loaded "${savedItinerary.name}"`,
+      });
+    } catch (error) {
+      console.error("Error loading itinerary:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load the itinerary",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Delete itinerary from database
+  const handleDeleteItinerary = async (id: string) => {
+    try {
+      const response = await fetch(`/api/itinerary?id=${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete itinerary");
+      }
+
+      // If we deleted the current itinerary, clear it
+      if (currentSavedItinerary?.id === id) {
+        setCurrentSavedItinerary(null);
+      }
+    } catch (error) {
+      console.error("Error deleting itinerary:", error);
+      throw error;
+    }
+  };
+
   const totals = calculateTotals();
 
   return (
@@ -778,6 +877,32 @@ export default function SafariCalculator() {
 
       {/* Setup Tab */}
       <TabsContent value="setup" className="space-y-4 md:space-y-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
+            {currentSavedItinerary
+              ? currentSavedItinerary.name
+              : "New Safari Itinerary"}
+          </h2>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsSaveDialogOpen(true)}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {currentSavedItinerary ? "Update" : "Save"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsLoadDialogOpen(true)}
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Load
+            </Button>
+          </div>
+        </div>
+
         <Card>
           <CardHeader className="pb-2 md:pb-4">
             <CardTitle className="text-xl md:text-2xl">
@@ -1637,6 +1762,14 @@ export default function SafariCalculator() {
             >
               Back to Itinerary
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsSaveDialogOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {currentSavedItinerary ? "Update" : "Save"}
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
@@ -1688,9 +1821,7 @@ export default function SafariCalculator() {
 
                 <div>Activities:</div>
                 <div className="text-right">
-                  {formatCurrency(
-                    totals.adultActivities + totals.childActivities
-                  )}
+                  {formatCurrency(totals.activities)}
                 </div>
 
                 <div>Transportation:</div>
@@ -1808,6 +1939,22 @@ export default function SafariCalculator() {
           </Card>
         </div>
       </TabsContent>
+
+      {/* Save Itinerary Dialog */}
+      <SaveItineraryDialog
+        open={isSaveDialogOpen}
+        onOpenChange={setIsSaveDialogOpen}
+        onSave={handleSaveItinerary}
+        currentItinerary={currentSavedItinerary}
+      />
+
+      {/* Load Itinerary Dialog */}
+      <LoadItineraryDialog
+        open={isLoadDialogOpen}
+        onOpenChange={setIsLoadDialogOpen}
+        onLoad={handleLoadItinerary}
+        onDelete={handleDeleteItinerary}
+      />
     </Tabs>
   );
 }
