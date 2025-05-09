@@ -56,14 +56,12 @@ import { useToast } from "@/hooks/use-toast";
 import { SaveItineraryDialog } from "@/components/save-itinerary-dialog";
 import { LoadItineraryDialog } from "@/components/load-itinerary-dialog";
 import type { SavedItinerary } from "@/lib/db";
-import type { DayItinerary, RoomAllocation } from "@/types/safaris";
-import {
-  PLACES,
-  ACCOMMODATIONS,
-  CONCESSION_FEE,
-  CHILD_CONCESSION_FEE,
-  VEHICLE_CAPACITY,
-} from "@/lib/data";
+import type {
+  DayItinerary,
+  RoomAllocation,
+  Place,
+  Accommodation,
+} from "@/types/safaris";
 
 export default function SafariCalculator() {
   const [days, setDays] = useState<number>(3);
@@ -93,6 +91,44 @@ export default function SafariCalculator() {
   const [currentSavedItinerary, setCurrentSavedItinerary] =
     useState<SavedItinerary | null>(null);
   const { toast } = useToast();
+
+  // State for database data
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [constants, setConstants] = useState({
+    CONCESSION_FEE: 60,
+    CHILD_CONCESSION_FEE: 30,
+    VEHICLE_CAPACITY: 7,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch data from the database
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/safari-data");
+        if (!response.ok) {
+          throw new Error("Failed to fetch safari data");
+        }
+        const data = await response.json();
+        setPlaces(data.places);
+        setAccommodations(data.accommodations);
+        setConstants(data.constants);
+      } catch (error) {
+        console.error("Error fetching safari data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load safari data. Please refresh the page.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
 
   // Initialize itinerary when days change
   useEffect(() => {
@@ -306,13 +342,13 @@ export default function SafariCalculator() {
   // Get place by ID
   const getPlaceById = (id: string | null) => {
     if (!id) return null;
-    return PLACES.find((place) => place.id === id) || null;
+    return places.find((place) => place.id === id) || null;
   };
 
   // Get accommodation by ID
   const getAccommodationById = (id: string | null) => {
     if (!id) return null;
-    return ACCOMMODATIONS.find((acc) => acc.id === id) || null;
+    return accommodations.find((acc) => acc.id === id) || null;
   };
 
   // Get room type by ID
@@ -406,8 +442,8 @@ export default function SafariCalculator() {
 
     // Concession fee if applicable
     if (day.hasConcessionFee) {
-      adultConcessionFee = CONCESSION_FEE * adults;
-      childConcessionFee = CHILD_CONCESSION_FEE * children;
+      adultConcessionFee = constants.CONCESSION_FEE * adults;
+      childConcessionFee = constants.CHILD_CONCESSION_FEE * children;
     }
 
     const totalActivitiesCost = adultActivitiesCost + childActivitiesCost;
@@ -528,7 +564,7 @@ export default function SafariCalculator() {
       `Vehicles: ${getVehicleCount(getTotalClients())} ${
         useManualVehicles
           ? "(manually set)"
-          : `(${VEHICLE_CAPACITY} clients per vehicle)`
+          : `(${constants.VEHICLE_CAPACITY} clients per vehicle)`
       }`,
       20,
       75
@@ -862,6 +898,17 @@ export default function SafariCalculator() {
 
   const totals = calculateTotals();
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading safari data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Tabs
       defaultValue="setup"
@@ -1036,8 +1083,8 @@ export default function SafariCalculator() {
                 </div>
               ) : (
                 <p className="text-sm text-gray-600">
-                  Each vehicle can accommodate up to {VEHICLE_CAPACITY} clients.
-                  Your group will require{" "}
+                  Each vehicle can accommodate up to{" "}
+                  {constants.VEHICLE_CAPACITY} clients. Your group will require{" "}
                   <span className="font-bold">
                     {getVehicleCount(getTotalClients())}
                   </span>{" "}
@@ -1214,7 +1261,7 @@ export default function SafariCalculator() {
                                 <SelectValue placeholder="Select a place to visit" />
                               </SelectTrigger>
                               <SelectContent>
-                                {PLACES.map((placeOption) => (
+                                {places.map((placeOption) => (
                                   <SelectItem
                                     key={placeOption.id}
                                     value={placeOption.id}
@@ -1395,7 +1442,7 @@ export default function SafariCalculator() {
                           <SelectItem value="none" className="text-sm">
                             No accommodation (departure day)
                           </SelectItem>
-                          {ACCOMMODATIONS.map((acc) => (
+                          {accommodations.map((acc) => (
                             <SelectItem
                               key={acc.id}
                               value={acc.id}
@@ -1556,8 +1603,9 @@ export default function SafariCalculator() {
                                   htmlFor={`concession-${day.id}`}
                                   className="text-xs md:text-sm font-medium cursor-pointer"
                                 >
-                                  Add park concession fee (${CONCESSION_FEE} per
-                                  adult, ${CHILD_CONCESSION_FEE} per child)
+                                  Add park concession fee ($
+                                  {constants.CONCESSION_FEE} per adult, $
+                                  {constants.CHILD_CONCESSION_FEE} per child)
                                 </label>
                               </div>
                             )}
@@ -1699,7 +1747,9 @@ export default function SafariCalculator() {
                               {adults === 1 ? "person" : "people"}):
                             </div>
                             <div className="text-right font-medium">
-                              {formatCurrency(CONCESSION_FEE * adults)}
+                              {formatCurrency(
+                                constants.CONCESSION_FEE * adults
+                              )}
                             </div>
                           </>
                         )}
@@ -1711,7 +1761,9 @@ export default function SafariCalculator() {
                               {children === 1 ? "child" : "children"}):
                             </div>
                             <div className="text-right font-medium">
-                              {formatCurrency(CHILD_CONCESSION_FEE * children)}
+                              {formatCurrency(
+                                constants.CHILD_CONCESSION_FEE * children
+                              )}
                             </div>
                           </>
                         )}
@@ -1915,7 +1967,7 @@ export default function SafariCalculator() {
                     <>
                       <div>Vehicle Capacity:</div>
                       <div className="text-right">
-                        {VEHICLE_CAPACITY} clients per vehicle
+                        {constants.VEHICLE_CAPACITY} clients per vehicle
                       </div>
                     </>
                   )}
