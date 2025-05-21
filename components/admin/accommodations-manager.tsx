@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import type { Accommodation, RoomType } from "@/types/safaris";
+import { setLastUpdateTimestamp } from "@/lib/update-tracker";
 
 interface AccommodationsManagerProps {
   accommodations: Accommodation[];
@@ -70,6 +71,7 @@ export function AccommodationsManager({
           description: "The accommodation has been deleted successfully",
         });
 
+        setLastUpdateTimestamp();
         onAccommodationsChange();
       } catch (error) {
         console.error("Error deleting accommodation:", error);
@@ -320,6 +322,7 @@ function AddAccommodationDialog({
         description: "The accommodation has been saved successfully",
       });
 
+      setLastUpdateTimestamp();
       onSave();
       onOpenChange(false);
       // Reset form
@@ -726,6 +729,7 @@ function EditAccommodationDialog({
         description: "The accommodation has been updated successfully",
       });
 
+      setLastUpdateTimestamp();
       onSave();
       onOpenChange(false);
     } catch (error) {

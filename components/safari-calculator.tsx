@@ -34,6 +34,7 @@ import {
   BabyIcon as Child,
   Save,
   FileDown,
+  GripVertical,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -62,6 +63,617 @@ import type {
   Place,
   Accommodation,
 } from "@/types/safaris";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Sortable Day Item Component
+interface SortableDayProps {
+  day: DayItinerary;
+  places: Place[];
+  accommodations: Accommodation[];
+  isHighSeason: boolean;
+  constants: {
+    CONCESSION_FEE: number;
+    CHILD_CONCESSION_FEE: number;
+    VEHICLE_CAPACITY: number;
+  };
+  getTotalClients: () => number;
+  getVehicleCount: (clientCount: number) => number;
+  formatCurrency: (amount: number) => string;
+  getPlaceById: (id: string | null) => Place | null;
+  getAccommodationById: (id: string | null) => Accommodation | null;
+  getRoomTypeById: (accommodationId: string | null, roomTypeId: string) => any;
+  getActivityById: (placeId: string | null, activityId: string) => any;
+  calculateDayCosts: (day: DayItinerary) => any;
+  calculateTotalClientsAccommodated: (
+    roomAllocation: RoomAllocation[],
+    accommodationId: string | null
+  ) => number;
+  addPlaceToDay: (dayId: number) => void;
+  removePlaceFromDay: (dayId: number, placeIndex: number) => void;
+  updateDayPlace: (dayId: number, placeIndex: number, placeId: string) => void;
+  toggleActivity: (
+    dayId: number,
+    placeIndex: number,
+    activityId: string
+  ) => void;
+  toggleConcessionFee: (dayId: number) => void;
+  handleAccommodationChange: (dayId: number, accommodationId: string) => void;
+  updateRoomAllocation: (
+    dayId: number,
+    roomTypeId: string,
+    quantity: number
+  ) => void;
+  updateItinerary: (id: number, field: keyof DayItinerary, value: any) => void;
+}
+
+function SortableDayItem({
+  day,
+  places,
+  accommodations,
+  isHighSeason,
+  constants,
+  getTotalClients,
+  getVehicleCount,
+  formatCurrency,
+  getPlaceById,
+  getAccommodationById,
+  getRoomTypeById,
+  getActivityById,
+  calculateDayCosts,
+  calculateTotalClientsAccommodated,
+  addPlaceToDay,
+  removePlaceFromDay,
+  updateDayPlace,
+  toggleActivity,
+  toggleConcessionFee,
+  handleAccommodationChange,
+  updateRoomAllocation,
+  updateItinerary,
+}: SortableDayProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: day.id.toString(),
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <AccordionItem
+      key={day.id}
+      value={`day-${day.id}`}
+      ref={setNodeRef}
+      style={style}
+    >
+      <AccordionTrigger className="hover:bg-green-50 px-3 md:px-4 rounded-md group">
+        <div className="flex items-center gap-2 text-sm md:text-base w-full">
+          <div
+            className="cursor-grab opacity-40 group-hover:opacity-100 p-1 rounded hover:bg-gray-100"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+          <Badge
+            variant="outline"
+            className="bg-green-100 text-green-800 hover:bg-green-100"
+          >
+            Day {day.id}
+          </Badge>
+          <span className="font-medium truncate max-w-[150px] sm:max-w-[250px] md:max-w-none">
+            {day.places.length > 0
+              ? day.places
+                  .map((p) => getPlaceById(p.placeId)?.name || "")
+                  .filter(Boolean)
+                  .join(" & ")
+              : `Day ${day.id} Itinerary`}
+          </span>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-2 md:px-4 pt-4">
+        <Card className="border-green-200">
+          <CardContent className="space-y-4 md:space-y-6 pt-4 md:pt-6 px-3 md:px-6">
+            {/* Places Section */}
+            <div className="space-y-3 md:space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                <Label className="text-base md:text-lg font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4 md:h-5 md:w-5" />
+                  Places to Visit
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addPlaceToDay(day.id)}
+                  className="flex items-center gap-1 w-full sm:w-auto"
+                >
+                  <Plus className="h-4 w-4" /> Add Place
+                </Button>
+              </div>
+
+              {day.places.length === 0 && (
+                <div className="text-center py-4 text-gray-500 border border-dashed rounded-md text-sm">
+                  No places added. Click "Add Place" to begin.
+                </div>
+              )}
+
+              {day.places.map((place, placeIndex) => (
+                <div
+                  key={placeIndex}
+                  className="border rounded-md p-3 md:p-4 space-y-3 md:space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm md:text-base">
+                      Place {placeIndex + 1}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removePlaceFromDay(day.id, placeIndex)}
+                      className="h-8 w-8 p-0 text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remove place</span>
+                    </Button>
+                  </div>
+
+                  {/* Place Selection */}
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor={`place-${day.id}-${placeIndex}`}
+                      className="text-sm"
+                    >
+                      Select Destination
+                    </Label>
+                    <Select
+                      value={place.placeId || ""}
+                      onValueChange={(value) =>
+                        updateDayPlace(day.id, placeIndex, value)
+                      }
+                    >
+                      <SelectTrigger
+                        id={`place-${day.id}-${placeIndex}`}
+                        className="text-sm"
+                      >
+                        <SelectValue placeholder="Select a place to visit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {places.map((placeOption) => (
+                          <SelectItem
+                            key={placeOption.id}
+                            value={placeOption.id}
+                            className="text-sm"
+                          >
+                            {placeOption.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {place.placeId && (
+                      <p className="text-xs md:text-sm text-gray-500 mt-1">
+                        {getPlaceById(place.placeId)?.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Activities Selection */}
+                  {place.placeId && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-sm">
+                        Activities
+                      </Label>
+                      <div className="space-y-2">
+                        {getPlaceById(place.placeId)?.activities.map(
+                          (activity) => (
+                            <Collapsible
+                              key={activity.id}
+                              className="border rounded-md"
+                            >
+                              <div className="flex items-center justify-between p-2">
+                                <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                    checked={place.selectedActivities.includes(
+                                      activity.id
+                                    )}
+                                    onCheckedChange={() =>
+                                      toggleActivity(
+                                        day.id,
+                                        placeIndex,
+                                        activity.id
+                                      )
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                    className="font-medium cursor-pointer text-xs md:text-sm"
+                                  >
+                                    {activity.name}
+                                  </label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-green-700 text-xs md:text-sm">
+                                    {formatCurrency(
+                                      isHighSeason
+                                        ? activity.highSeasonCost
+                                        : activity.lowSeasonCost
+                                    )}
+                                    <span className="text-xs text-gray-500 hidden sm:inline">
+                                      {" "}
+                                      {activity.id === "ngorongoro-crater-tour"
+                                        ? "per vehicle"
+                                        : "per adult"}
+                                    </span>
+                                  </span>
+                                  <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
+                                    <svg
+                                      width="15"
+                                      height="15"
+                                      viewBox="0 0 15 15"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="h-4 w-4"
+                                    >
+                                      <path
+                                        d="M7.5 12L7.5 3M7.5 3L3.5 7M7.5 3L11.5 7"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      ></path>
+                                    </svg>
+                                  </CollapsibleTrigger>
+                                </div>
+                              </div>
+                              <CollapsibleContent className="p-2 pt-0 border-t">
+                                <p className="text-xs md:text-sm text-gray-600">
+                                  {activity.description}
+                                </p>
+                                <div className="mt-2 space-y-1">
+                                  <p className="text-xs text-gray-500 sm:hidden">
+                                    {activity.id === "ngorongoro-crater-tour"
+                                      ? `Charged per vehicle (${getVehicleCount(
+                                          getTotalClients()
+                                        )} vehicles needed)`
+                                      : "Charged per person"}
+                                  </p>
+                                  {activity.id === "ngorongoro-crater-tour" ? (
+                                    <p className="text-xs text-green-700">
+                                      Total:{" "}
+                                      {formatCurrency(
+                                        (isHighSeason
+                                          ? activity.highSeasonCost
+                                          : activity.lowSeasonCost) *
+                                          getVehicleCount(getTotalClients())
+                                      )}{" "}
+                                      for {getVehicleCount(getTotalClients())}{" "}
+                                      vehicle(s)
+                                    </p>
+                                  ) : (
+                                    activity.id !==
+                                      "ngorongoro-crater-tour" && (
+                                      <p className="text-xs text-green-700">
+                                        Child price:{" "}
+                                        {formatCurrency(
+                                          isHighSeason
+                                            ? activity.childHighSeasonCost
+                                            : activity.childLowSeasonCost
+                                        )}{" "}
+                                        per child
+                                      </p>
+                                    )
+                                  )}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Accommodation Selection */}
+            <div className="space-y-3 md:space-y-4">
+              <Label
+                htmlFor={`accommodation-${day.id}`}
+                className="text-base md:text-lg font-medium flex items-center gap-2"
+              >
+                <Hotel className="h-4 w-4 md:h-5 md:w-5" />
+                Overnight Accommodation
+              </Label>
+              <Select
+                value={day.selectedAccommodation || ""}
+                onValueChange={(value) =>
+                  handleAccommodationChange(day.id, value)
+                }
+              >
+                <SelectTrigger
+                  id={`accommodation-${day.id}`}
+                  className="text-sm"
+                >
+                  <SelectValue placeholder="Select accommodation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-sm">
+                    No accommodation (departure day)
+                  </SelectItem>
+                  {accommodations.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id} className="text-sm">
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {day.selectedAccommodation &&
+                day.selectedAccommodation !== "none" && (
+                  <div className="space-y-3 md:space-y-4">
+                    <p className="text-xs md:text-sm text-gray-500">
+                      {
+                        getAccommodationById(day.selectedAccommodation)
+                          ?.description
+                      }
+                    </p>
+                    <p className="text-green-700 font-medium text-xs md:text-sm">
+                      Includes: Full Board (All Meals)
+                    </p>
+
+                    {/* Room Allocation */}
+                    <div className="border rounded-md p-3 md:p-4 bg-gray-50">
+                      <div className="flex items-center gap-2 mb-2 md:mb-3">
+                        <Bed className="h-4 w-4" />
+                        <h4 className="font-medium text-sm md:text-base">
+                          Room Allocation
+                        </h4>
+                      </div>
+
+                      <div className="space-y-3">
+                        {getAccommodationById(
+                          day.selectedAccommodation
+                        )?.roomTypes.map((roomType) => {
+                          const allocation = day.roomAllocation.find(
+                            (r) => r.roomTypeId === roomType.id
+                          );
+                          const quantity = allocation ? allocation.quantity : 0;
+
+                          return (
+                            <div
+                              key={roomType.id}
+                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0"
+                            >
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {roomType.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Max {roomType.maxOccupancy}{" "}
+                                  {roomType.maxOccupancy === 1
+                                    ? "person"
+                                    : "people"}{" "}
+                                  •{" "}
+                                  {formatCurrency(
+                                    isHighSeason
+                                      ? roomType.highSeasonCost
+                                      : roomType.lowSeasonCost
+                                  )}{" "}
+                                  per room
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() =>
+                                    updateRoomAllocation(
+                                      day.id,
+                                      roomType.id,
+                                      Math.max(0, quantity - 1)
+                                    )
+                                  }
+                                >
+                                  -
+                                </Button>
+                                <span className="w-8 text-center text-sm">
+                                  {quantity}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() =>
+                                    updateRoomAllocation(
+                                      day.id,
+                                      roomType.id,
+                                      quantity + 1
+                                    )
+                                  }
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        <Separator className="my-2" />
+
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                          <div className="text-sm">
+                            <span className="font-medium">
+                              Total Accommodated:
+                            </span>
+                            <span className="ml-2">
+                              {calculateTotalClientsAccommodated(
+                                day.roomAllocation,
+                                day.selectedAccommodation
+                              )}{" "}
+                              / {getTotalClients()} clients
+                            </span>
+                          </div>
+                          {calculateTotalClientsAccommodated(
+                            day.roomAllocation,
+                            day.selectedAccommodation
+                          ) < getTotalClients() && (
+                            <Badge
+                              variant="destructive"
+                              className="w-full sm:w-auto text-center"
+                            >
+                              Not enough rooms
+                            </Badge>
+                          )}
+                          {calculateTotalClientsAccommodated(
+                            day.roomAllocation,
+                            day.selectedAccommodation
+                          ) > getTotalClients() && (
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
+                            >
+                              Extra capacity
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Concession Fee Toggle */}
+                    {getAccommodationById(day.selectedAccommodation)
+                      ?.inPark && (
+                      <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-md">
+                        <Checkbox
+                          id={`concession-${day.id}`}
+                          checked={day.hasConcessionFee}
+                          onCheckedChange={() => toggleConcessionFee(day.id)}
+                        />
+                        <label
+                          htmlFor={`concession-${day.id}`}
+                          className="text-xs md:text-sm font-medium cursor-pointer"
+                        >
+                          Add park concession fee (${constants.CONCESSION_FEE}{" "}
+                          per adult, ${constants.CHILD_CONCESSION_FEE} per
+                          child)
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
+
+            {/* Transportation Cost */}
+            <div className="space-y-2">
+              <Label
+                htmlFor={`transportation-cost-${day.id}`}
+                className="flex items-center gap-2 text-sm"
+              >
+                <Car className="h-4 w-4" />
+                Transportation Cost
+              </Label>
+              <Input
+                id={`transportation-cost-${day.id}`}
+                type="number"
+                min="0"
+                placeholder="0.00"
+                value={day.transportationCost || ""}
+                onChange={(e) =>
+                  updateItinerary(
+                    day.id,
+                    "transportationCost",
+                    Number.parseFloat(e.target.value) || 0
+                  )
+                }
+                className="text-sm"
+              />
+            </div>
+
+            {/* Day Summary */}
+            <div className="bg-green-50 p-3 md:p-4 rounded-md">
+              <h4 className="font-medium text-green-800 mb-2 text-sm md:text-base">
+                Day {day.id} Cost Summary
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+                {day.selectedAccommodation &&
+                  day.selectedAccommodation !== "none" && (
+                    <>
+                      <div>Accommodation (Full Board):</div>
+                      <div className="text-right font-medium">
+                        {formatCurrency(
+                          calculateDayCosts(day).accommodationCost
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                {day.places.some((p) => p.selectedActivities.length > 0) && (
+                  <>
+                    <div>Activities:</div>
+                    <div className="text-right font-medium">
+                      {formatCurrency(
+                        calculateDayCosts(day).totalActivitiesCost
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <div>Transportation:</div>
+                <div className="text-right font-medium">
+                  {formatCurrency(day.transportationCost)}
+                </div>
+
+                {day.hasConcessionFee && (
+                  <>
+                    <div>Concession Fees:</div>
+                    <div className="text-right font-medium">
+                      {formatCurrency(
+                        calculateDayCosts(day).totalConcessionFee
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <Separator className="col-span-2 my-1" />
+
+                <div className="font-medium">Day Total:</div>
+                <div className="text-right font-bold">
+                  {formatCurrency(calculateDayCosts(day).totalCost)}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
 
 export default function SafariCalculator() {
   const [days, setDays] = useState<number>(3);
@@ -101,6 +713,18 @@ export default function SafariCalculator() {
     VEHICLE_CAPACITY: 7,
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Setup DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch data from the database
   useEffect(() => {
@@ -151,22 +775,38 @@ export default function SafariCalculator() {
         return day;
       })
     );
-  }, [getTotalClients, isHighSeason]); // Now this effect depends on both adults and children
+  }, [getTotalClients, isHighSeason]);
 
+  // Modified to preserve existing data when changing days
   const initializeItinerary = (numDays: number) => {
-    const newItinerary: DayItinerary[] = [];
-    for (let i = 0; i < numDays; i++) {
-      newItinerary.push({
-        id: i + 1,
-        places: [],
-        selectedAccommodation: null,
-        roomAllocation: [],
-        hasConcessionFee: false,
-        transportationCost: 0,
-        notes: "",
-      });
-    }
-    setItinerary(newItinerary);
+    setItinerary((prevItinerary) => {
+      // Create a new array with the desired length
+      const newItinerary: DayItinerary[] = [];
+
+      // Fill with existing data where possible
+      for (let i = 0; i < numDays; i++) {
+        const dayId = i + 1;
+        const existingDay = prevItinerary.find((day) => day.id === dayId);
+
+        if (existingDay) {
+          // Use existing day data
+          newItinerary.push(existingDay);
+        } else {
+          // Create new day data
+          newItinerary.push({
+            id: dayId,
+            places: [],
+            selectedAccommodation: null,
+            roomAllocation: [],
+            hasConcessionFee: false,
+            transportationCost: 0,
+            notes: "",
+          });
+        }
+      }
+
+      return newItinerary;
+    });
   };
 
   // Handle days input change
@@ -896,6 +1536,31 @@ export default function SafariCalculator() {
     }
   };
 
+  // Handle drag end for reordering days
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setItinerary((items) => {
+        const oldIndex = items.findIndex(
+          (item) => item.id.toString() === active.id
+        );
+        const newIndex = items.findIndex(
+          (item) => item.id.toString() === over.id
+        );
+
+        // Create a new array with the items in the new order
+        const newItems = arrayMove(items, oldIndex, newIndex);
+
+        // Update the id property to match the new position
+        return newItems.map((item, index) => ({
+          ...item,
+          id: index + 1,
+        }));
+      });
+    }
+  };
+
   const totals = calculateTotals();
 
   if (isLoading) {
@@ -1171,617 +1836,48 @@ export default function SafariCalculator() {
           </div>
         </div>
 
-        <Accordion type="single" collapsible className="w-full">
-          {itinerary.map((day) => (
-            <AccordionItem key={day.id} value={`day-${day.id}`}>
-              <AccordionTrigger className="hover:bg-green-50 px-3 md:px-4 rounded-md">
-                <div className="flex items-center gap-2 text-sm md:text-base">
-                  <Badge
-                    variant="outline"
-                    className="bg-green-100 text-green-800 hover:bg-green-100"
-                  >
-                    Day {day.id}
-                  </Badge>
-                  <span className="font-medium truncate max-w-[150px] sm:max-w-[250px] md:max-w-none">
-                    {day.places.length > 0
-                      ? day.places
-                          .map((p) => getPlaceById(p.placeId)?.name || "")
-                          .filter(Boolean)
-                          .join(" & ")
-                      : `Day ${day.id} Itinerary`}
-                  </span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-2 md:px-4 pt-4">
-                <Card className="border-green-200">
-                  <CardContent className="space-y-4 md:space-y-6 pt-4 md:pt-6 px-3 md:px-6">
-                    {/* Places Section */}
-                    <div className="space-y-3 md:space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                        <Label className="text-base md:text-lg font-medium flex items-center gap-2">
-                          <MapPin className="h-4 w-4 md:h-5 md:w-5" />
-                          Places to Visit
-                        </Label>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addPlaceToDay(day.id)}
-                          className="flex items-center gap-1 w-full sm:w-auto"
-                        >
-                          <Plus className="h-4 w-4" /> Add Place
-                        </Button>
-                      </div>
-
-                      {day.places.length === 0 && (
-                        <div className="text-center py-4 text-gray-500 border border-dashed rounded-md text-sm">
-                          No places added. Click "Add Place" to begin.
-                        </div>
-                      )}
-
-                      {day.places.map((place, placeIndex) => (
-                        <div
-                          key={placeIndex}
-                          className="border rounded-md p-3 md:p-4 space-y-3 md:space-y-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-sm md:text-base">
-                              Place {placeIndex + 1}
-                            </h4>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                removePlaceFromDay(day.id, placeIndex)
-                              }
-                              className="h-8 w-8 p-0 text-red-500"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Remove place</span>
-                            </Button>
-                          </div>
-
-                          {/* Place Selection */}
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor={`place-${day.id}-${placeIndex}`}
-                              className="text-sm"
-                            >
-                              Select Destination
-                            </Label>
-                            <Select
-                              value={place.placeId || ""}
-                              onValueChange={(value) =>
-                                updateDayPlace(day.id, placeIndex, value)
-                              }
-                            >
-                              <SelectTrigger
-                                id={`place-${day.id}-${placeIndex}`}
-                                className="text-sm"
-                              >
-                                <SelectValue placeholder="Select a place to visit" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {places.map((placeOption) => (
-                                  <SelectItem
-                                    key={placeOption.id}
-                                    value={placeOption.id}
-                                    className="text-sm"
-                                  >
-                                    {placeOption.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            {place.placeId && (
-                              <p className="text-xs md:text-sm text-gray-500 mt-1">
-                                {getPlaceById(place.placeId)?.description}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Activities Selection */}
-                          {place.placeId && (
-                            <div className="space-y-2">
-                              <Label className="flex items-center gap-2 text-sm">
-                                Activities
-                              </Label>
-                              <div className="space-y-2">
-                                {getPlaceById(place.placeId)?.activities.map(
-                                  (activity) => (
-                                    <Collapsible
-                                      key={activity.id}
-                                      className="border rounded-md"
-                                    >
-                                      <div className="flex items-center justify-between p-2">
-                                        <div className="flex items-center gap-2">
-                                          <Checkbox
-                                            id={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                            checked={place.selectedActivities.includes(
-                                              activity.id
-                                            )}
-                                            onCheckedChange={() =>
-                                              toggleActivity(
-                                                day.id,
-                                                placeIndex,
-                                                activity.id
-                                              )
-                                            }
-                                          />
-                                          <label
-                                            htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                            className="font-medium cursor-pointer text-xs md:text-sm"
-                                          >
-                                            {activity.name}
-                                          </label>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-green-700 text-xs md:text-sm">
-                                            {formatCurrency(
-                                              isHighSeason
-                                                ? activity.highSeasonCost
-                                                : activity.lowSeasonCost
-                                            )}
-                                            <span className="text-xs text-gray-500 hidden sm:inline">
-                                              {" "}
-                                              {activity.id ===
-                                              "ngorongoro-crater-tour"
-                                                ? "per vehicle"
-                                                : "per adult"}
-                                            </span>
-                                          </span>
-                                          <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
-                                            <svg
-                                              width="15"
-                                              height="15"
-                                              viewBox="0 0 15 15"
-                                              fill="none"
-                                              xmlns="http://www.w3.org/2000/svg"
-                                              className="h-4 w-4"
-                                            >
-                                              <path
-                                                d="M7.5 12L7.5 3M7.5 3L3.5 7M7.5 3L11.5 7"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                              ></path>
-                                            </svg>
-                                          </CollapsibleTrigger>
-                                        </div>
-                                      </div>
-                                      <CollapsibleContent className="p-2 pt-0 border-t">
-                                        <p className="text-xs md:text-sm text-gray-600">
-                                          {activity.description}
-                                        </p>
-                                        <div className="mt-2 space-y-1">
-                                          <p className="text-xs text-gray-500 sm:hidden">
-                                            {activity.id ===
-                                            "ngorongoro-crater-tour"
-                                              ? `Charged per vehicle (${getVehicleCount(
-                                                  getTotalClients()
-                                                )} vehicles needed)`
-                                              : "Charged per person"}
-                                          </p>
-                                          {activity.id ===
-                                          "ngorongoro-crater-tour" ? (
-                                            <p className="text-xs text-green-700">
-                                              Total:{" "}
-                                              {formatCurrency(
-                                                (isHighSeason
-                                                  ? activity.highSeasonCost
-                                                  : activity.lowSeasonCost) *
-                                                  getVehicleCount(
-                                                    getTotalClients()
-                                                  )
-                                              )}{" "}
-                                              for{" "}
-                                              {getVehicleCount(
-                                                getTotalClients()
-                                              )}{" "}
-                                              vehicle(s)
-                                              {useManualVehicles &&
-                                                " (manually set)"}
-                                            </p>
-                                          ) : (
-                                            activity.id !==
-                                              "ngorongoro-crater-tour" && (
-                                              <p className="text-xs text-green-700">
-                                                Child price:{" "}
-                                                {formatCurrency(
-                                                  isHighSeason
-                                                    ? activity.childHighSeasonCost
-                                                    : activity.childLowSeasonCost
-                                                )}{" "}
-                                                per child
-                                              </p>
-                                            )
-                                          )}
-                                        </div>
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  )
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Accommodation Selection */}
-                    <div className="space-y-3 md:space-y-4">
-                      <Label
-                        htmlFor={`accommodation-${day.id}`}
-                        className="text-base md:text-lg font-medium flex items-center gap-2"
-                      >
-                        <Hotel className="h-4 w-4 md:h-5 md:w-5" />
-                        {day.id === days
-                          ? "Accommodation (Optional for Last Day)"
-                          : "Overnight Accommodation"}
-                      </Label>
-                      <Select
-                        value={day.selectedAccommodation || ""}
-                        onValueChange={(value) =>
-                          handleAccommodationChange(day.id, value)
-                        }
-                      >
-                        <SelectTrigger
-                          id={`accommodation-${day.id}`}
-                          className="text-sm"
-                        >
-                          <SelectValue
-                            placeholder={
-                              day.id === days
-                                ? "No accommodation needed (last day)"
-                                : "Select accommodation"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none" className="text-sm">
-                            No accommodation (departure day)
-                          </SelectItem>
-                          {accommodations.map((acc) => (
-                            <SelectItem
-                              key={acc.id}
-                              value={acc.id}
-                              className="text-sm"
-                            >
-                              {acc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {day.selectedAccommodation &&
-                        day.selectedAccommodation !== "none" && (
-                          <div className="space-y-3 md:space-y-4">
-                            <p className="text-xs md:text-sm text-gray-500">
-                              {
-                                getAccommodationById(day.selectedAccommodation)
-                                  ?.description
-                              }
-                            </p>
-                            <p className="text-green-700 font-medium text-xs md:text-sm">
-                              Includes: Full Board (All Meals)
-                            </p>
-
-                            {/* Room Allocation */}
-                            <div className="border rounded-md p-3 md:p-4 bg-gray-50">
-                              <div className="flex items-center gap-2 mb-2 md:mb-3">
-                                <Bed className="h-4 w-4" />
-                                <h4 className="font-medium text-sm md:text-base">
-                                  Room Allocation
-                                </h4>
-                              </div>
-
-                              <div className="space-y-3">
-                                {getAccommodationById(
-                                  day.selectedAccommodation
-                                )?.roomTypes.map((roomType) => {
-                                  const allocation = day.roomAllocation.find(
-                                    (r) => r.roomTypeId === roomType.id
-                                  );
-                                  const quantity = allocation
-                                    ? allocation.quantity
-                                    : 0;
-
-                                  return (
-                                    <div
-                                      key={roomType.id}
-                                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0"
-                                    >
-                                      <div>
-                                        <p className="font-medium text-sm">
-                                          {roomType.name}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                          Max {roomType.maxOccupancy}{" "}
-                                          {roomType.maxOccupancy === 1
-                                            ? "person"
-                                            : "people"}{" "}
-                                          •{" "}
-                                          {formatCurrency(
-                                            isHighSeason
-                                              ? roomType.highSeasonCost
-                                              : roomType.lowSeasonCost
-                                          )}{" "}
-                                          per room
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-8 w-8 p-0"
-                                          onClick={() =>
-                                            updateRoomAllocation(
-                                              day.id,
-                                              roomType.id,
-                                              Math.max(0, quantity - 1)
-                                            )
-                                          }
-                                        >
-                                          -
-                                        </Button>
-                                        <span className="w-8 text-center text-sm">
-                                          {quantity}
-                                        </span>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-8 w-8 p-0"
-                                          onClick={() =>
-                                            updateRoomAllocation(
-                                              day.id,
-                                              roomType.id,
-                                              quantity + 1
-                                            )
-                                          }
-                                        >
-                                          +
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-
-                                <Separator className="my-2" />
-
-                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                                  <div className="text-sm">
-                                    <span className="font-medium">
-                                      Total Accommodated:
-                                    </span>
-                                    <span className="ml-2">
-                                      {calculateTotalClientsAccommodated(
-                                        day.roomAllocation,
-                                        day.selectedAccommodation
-                                      )}{" "}
-                                      / {getTotalClients()} clients
-                                    </span>
-                                  </div>
-                                  {calculateTotalClientsAccommodated(
-                                    day.roomAllocation,
-                                    day.selectedAccommodation
-                                  ) < getTotalClients() && (
-                                    <Badge
-                                      variant="destructive"
-                                      className="w-full sm:w-auto text-center"
-                                    >
-                                      Not enough rooms
-                                    </Badge>
-                                  )}
-                                  {calculateTotalClientsAccommodated(
-                                    day.roomAllocation,
-                                    day.selectedAccommodation
-                                  ) > getTotalClients() && (
-                                    <Badge
-                                      variant="outline"
-                                      className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
-                                    >
-                                      Extra capacity
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Concession Fee Toggle */}
-                            {getAccommodationById(day.selectedAccommodation)
-                              ?.inPark && (
-                              <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-md">
-                                <Checkbox
-                                  id={`concession-${day.id}`}
-                                  checked={day.hasConcessionFee}
-                                  onCheckedChange={() =>
-                                    toggleConcessionFee(day.id)
-                                  }
-                                />
-                                <label
-                                  htmlFor={`concession-${day.id}`}
-                                  className="text-xs md:text-sm font-medium cursor-pointer"
-                                >
-                                  Add park concession fee ($
-                                  {constants.CONCESSION_FEE} per adult, $
-                                  {constants.CHILD_CONCESSION_FEE} per child)
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                    </div>
-
-                    {/* Transportation Cost */}
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor={`transportation-cost-${day.id}`}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <Car className="h-4 w-4" />
-                        Transportation Cost
-                      </Label>
-                      <Input
-                        id={`transportation-cost-${day.id}`}
-                        type="number"
-                        min="0"
-                        placeholder="0.00"
-                        value={day.transportationCost || ""}
-                        onChange={(e) =>
-                          updateItinerary(
-                            day.id,
-                            "transportationCost",
-                            Number.parseFloat(e.target.value) || 0
-                          )
-                        }
-                        className="text-sm"
-                      />
-                    </div>
-
-                    {/* Day Summary */}
-                    <div className="bg-green-50 p-3 md:p-4 rounded-md">
-                      <h4 className="font-medium text-green-800 mb-2 text-sm md:text-base">
-                        Day {day.id} Cost Summary
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
-                        {day.selectedAccommodation &&
-                          day.selectedAccommodation !== "none" && (
-                            <>
-                              <div>Accommodation (Full Board):</div>
-                              <div className="text-right font-medium">
-                                {formatCurrency(
-                                  calculateDayCosts(day).accommodationCost
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                        {day.places.some(
-                          (p) => p.selectedActivities.length > 0
-                        ) &&
-                          adults > 0 && (
-                            <>
-                              <div>
-                                Activities for {adults}{" "}
-                                {adults === 1 ? "adult" : "adults"}:
-                              </div>
-                              <div className="text-right font-medium">
-                                {formatCurrency(
-                                  calculateDayCosts(day).adultActivitiesCost -
-                                    (day.places.some((p) =>
-                                      p.selectedActivities.includes(
-                                        "ngorongoro-crater-tour"
-                                      )
-                                    )
-                                      ? getVehicleCount(getTotalClients()) *
-                                        (isHighSeason
-                                          ? getActivityById(
-                                              "ngorongoro",
-                                              "ngorongoro-crater-tour"
-                                            )?.highSeasonCost || 0
-                                          : getActivityById(
-                                              "ngorongoro",
-                                              "ngorongoro-crater-tour"
-                                            )?.lowSeasonCost || 0)
-                                      : 0)
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                        {day.places.some(
-                          (p) => p.selectedActivities.length > 0
-                        ) &&
-                          children > 0 && (
-                            <>
-                              <div>
-                                Activities for {children}{" "}
-                                {children === 1 ? "child" : "children"}:
-                              </div>
-                              <div className="text-right font-medium">
-                                {formatCurrency(
-                                  calculateDayCosts(day).childActivitiesCost
-                                )}
-                              </div>
-                            </>
-                          )}
-
-                        {day.places.some((p) =>
-                          p.selectedActivities.includes(
-                            "ngorongoro-crater-tour"
-                          )
-                        ) && (
-                          <>
-                            <div>
-                              Ngorongoro Crater Tour (
-                              {getVehicleCount(getTotalClients())} vehicles):
-                            </div>
-                            <div className="text-right font-medium">
-                              {formatCurrency(
-                                getVehicleCount(getTotalClients()) *
-                                  (isHighSeason
-                                    ? getActivityById(
-                                        "ngorongoro",
-                                        "ngorongoro-crater-tour"
-                                      )?.highSeasonCost || 0
-                                    : getActivityById(
-                                        "ngorongoro",
-                                        "ngorongoro-crater-tour"
-                                      )?.lowSeasonCost || 0)
-                              )}
-                              {useManualVehicles && " (manually set)"}
-                            </div>
-                          </>
-                        )}
-
-                        <div>Transportation:</div>
-                        <div className="text-right font-medium">
-                          {formatCurrency(day.transportationCost)}
-                        </div>
-
-                        {day.hasConcessionFee && adults > 0 && (
-                          <>
-                            <div>
-                              Adult Concession Fees ({adults}{" "}
-                              {adults === 1 ? "person" : "people"}):
-                            </div>
-                            <div className="text-right font-medium">
-                              {formatCurrency(
-                                constants.CONCESSION_FEE * adults
-                              )}
-                            </div>
-                          </>
-                        )}
-
-                        {day.hasConcessionFee && children > 0 && (
-                          <>
-                            <div>
-                              Child Concession Fees ({children}{" "}
-                              {children === 1 ? "child" : "children"}):
-                            </div>
-                            <div className="text-right font-medium">
-                              {formatCurrency(
-                                constants.CHILD_CONCESSION_FEE * children
-                              )}
-                            </div>
-                          </>
-                        )}
-
-                        <Separator className="col-span-2 my-1" />
-
-                        <div className="font-medium">Day Total:</div>
-                        <div className="text-right font-bold">
-                          {formatCurrency(calculateDayCosts(day).totalCost)}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <Accordion type="single" collapsible className="w-full">
+            <SortableContext
+              items={itinerary.map((day) => day.id.toString())}
+              strategy={verticalListSortingStrategy}
+            >
+              {itinerary.map((day) => (
+                <SortableDayItem
+                  key={day.id}
+                  day={day}
+                  places={places}
+                  accommodations={accommodations}
+                  isHighSeason={isHighSeason}
+                  constants={constants}
+                  getTotalClients={getTotalClients}
+                  getVehicleCount={getVehicleCount}
+                  formatCurrency={formatCurrency}
+                  getPlaceById={getPlaceById}
+                  getAccommodationById={getAccommodationById}
+                  getRoomTypeById={getRoomTypeById}
+                  getActivityById={getActivityById}
+                  calculateDayCosts={calculateDayCosts}
+                  calculateTotalClientsAccommodated={
+                    calculateTotalClientsAccommodated
+                  }
+                  addPlaceToDay={addPlaceToDay}
+                  removePlaceFromDay={removePlaceFromDay}
+                  updateDayPlace={updateDayPlace}
+                  toggleActivity={toggleActivity}
+                  toggleConcessionFee={toggleConcessionFee}
+                  handleAccommodationChange={handleAccommodationChange}
+                  updateRoomAllocation={updateRoomAllocation}
+                  updateItinerary={updateItinerary}
+                />
+              ))}
+            </SortableContext>
+          </Accordion>
+        </DndContext>
 
         <div className="flex flex-col sm:flex-row justify-end gap-2">
           <Button

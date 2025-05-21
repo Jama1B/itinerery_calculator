@@ -32,6 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import type { Place, Activity } from "@/types/safaris";
+import { setLastUpdateTimestamp } from "@/lib/update-tracker";
 
 interface PlacesManagerProps {
   places: Place[];
@@ -65,6 +66,7 @@ export function PlacesManager({ places, onPlacesChange }: PlacesManagerProps) {
           description: "The place has been deleted successfully",
         });
 
+        setLastUpdateTimestamp();
         onPlacesChange();
       } catch (error) {
         console.error("Error deleting place:", error);
@@ -294,6 +296,7 @@ function AddPlaceDialog({ open, onOpenChange, onSave }: AddPlaceDialogProps) {
         description: "The place has been saved successfully",
       });
 
+      setLastUpdateTimestamp();
       onSave();
       onOpenChange(false);
       // Reset form
@@ -686,6 +689,7 @@ function EditPlaceDialog({
         description: "The place has been updated successfully",
       });
 
+      setLastUpdateTimestamp();
       onSave();
       onOpenChange(false);
     } catch (error) {
