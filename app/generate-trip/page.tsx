@@ -27,7 +27,7 @@ import {
   generateSafariItinerary,
   type GenerateSafariItineraryInput,
   type GenerateSafariItineraryOutput,
-} from "@/ai/flows/generate-safari-itinerary-flow";
+} from "@/src/ai/flows/generate-safari-itinerary-flow";
 
 const travelMonths = [
   "January", "February", "March", "April", "May", "June",

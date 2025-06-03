@@ -7,7 +7,7 @@
  * - GenerateSafariItineraryOutput - The return type for the flow.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '@/src/ai/genkit';
 import {z}  from 'genkit';
 import { getPlaces, getAccommodations } from '@/lib/safari-db'; 
 
