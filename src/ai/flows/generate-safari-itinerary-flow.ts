@@ -12,7 +12,7 @@ import {z}  from 'genkit';
 import { getPlaces, getAccommodations } from '@/lib/safari-db'; 
 
 // Define Zod schemas for flow input
-export const GenerateSafariItineraryInputSchema = z.object({
+const GenerateSafariItineraryInputSchema = z.object({
   durationDays: z.number().min(1).max(30).describe('Duration of the safari in days.'),
   numAdults: z.number().min(1).describe('Number of adults traveling.'),
   numChildren: z.number().min(0).describe('Number of children traveling.'),
@@ -40,7 +40,7 @@ const GeneratedDayItinerarySchema = z.object({
   accommodationName: z.string().optional().describe("Name of the suggested accommodation for the night, chosen from the provided list. Leave empty if it's the departure day or no overnight stay is planned (e.g., flying out late)."),
 });
 
-export const GenerateSafariItineraryOutputSchema = z.object({
+const GenerateSafariItineraryOutputSchema = z.object({
   tripTitle: z.string().describe("A catchy and descriptive title for the overall safari trip (e.g., 'Tanzania Wildlife Adventure', 'Luxury Kenya Safari')."),
   itinerary: z.array(GeneratedDayItinerarySchema).describe("The day-by-day itinerary plan, ensuring the number of days matches the user's requested duration."),
   suggestedSeason: z.enum(["high", "low"]).describe("The determined travel season (high or low) based on the travel month. High season: June-October & December-February. Low season: March-May & November."),
@@ -124,8 +124,8 @@ Instructions:
 const generateSafariItineraryFlow = ai.defineFlow(
   {
     name: 'generateSafariItineraryFlow',
-    inputSchema: PromptInputSchema,
-    outputSchema: GenerateSafariItineraryOutputSchema,
+    inputSchema: PromptInputSchema, // Still using the internal schema object here
+    outputSchema: GenerateSafariItineraryOutputSchema, // Still using the internal schema object here
   },
   async (input) => {
     const { output } = await generateItineraryPrompt(input);
