@@ -1,24 +1,32 @@
 
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { Place, Activity, Accommodation, RoomType } from "@/types/safaris";
+
+let sql: NeonQueryFunction<false, false>;
 
 const DATABASE_URL_ENV = process.env.DATABASE_URL;
 
 if (!DATABASE_URL_ENV) {
-  // This error will be thrown when the module is loaded if DATABASE_URL is not set.
-  // This will cause the server to fail to handle requests to /api/safari-data correctly.
-  // The API route will catch this during its import of getPlaces/getAccommodations/getConstants.
-  throw new Error(
-    "FATAL: DATABASE_URL environment variable is not set. " +
-    "Please ensure DATABASE_URL is correctly configured in your .env file for the application to connect to the database."
+  console.error(
+    "WARNING: DATABASE_URL environment variable is not set. " +
+    "Database functionalities will be unavailable. Ensure DATABASE_URL is configured in your .env file."
   );
+  // Assign a mock function that throws if called, to allow module loading and type checking.
+  sql = (() => {
+    throw new Error(
+      "Database connection is not initialized because DATABASE_URL is missing."
+    );
+  }) as any; // Use 'as any' as it's a development-time safeguard.
+} else {
+  // Initialize the Neon client if DATABASE_URL is present
+  sql = neon(DATABASE_URL_ENV);
 }
-
-// Initialize the Neon client
-const sql = neon(DATABASE_URL_ENV);
 
 // Fetch constants from the database
 export async function getConstants() {
+  // The check for sql's validity is now implicit:
+  // if it wasn't initialized properly (due to missing DATABASE_URL),
+  // calling it will throw the error defined above.
   const result = await sql`
     SELECT id, value FROM constants
   `;
@@ -37,12 +45,10 @@ export async function getConstants() {
 
 // Fetch all places with their activities
 export async function getPlaces(): Promise<Place[]> {
-  // First, get all places
   const placesResult = await sql`
     SELECT id, name, description FROM places
   `;
 
-  // Then, get all activities
   const activitiesResult = await sql`
     SELECT 
       id, 
@@ -56,8 +62,7 @@ export async function getPlaces(): Promise<Place[]> {
     FROM activities
   `;
 
-  // Map activities to their places
-  const places: Place[] = placesResult.map((place) => {
+  const placesData: Place[] = placesResult.map((place) => {
     const placeActivities: Activity[] = activitiesResult
       .filter((activity) => activity.place_id === place.id)
       .map((activity) => ({
@@ -78,12 +83,11 @@ export async function getPlaces(): Promise<Place[]> {
     };
   });
 
-  return places;
+  return placesData;
 }
 
 // Fetch all accommodations with their room types
 export async function getAccommodations(): Promise<Accommodation[]> {
-  // First, get all accommodations
   const accommodationsResult = await sql`
     SELECT 
       id, 
@@ -95,7 +99,6 @@ export async function getAccommodations(): Promise<Accommodation[]> {
     FROM accommodations
   `;
 
-  // Then, get all room types
   const roomTypesResult = await sql`
     SELECT 
       id, 
@@ -107,8 +110,7 @@ export async function getAccommodations(): Promise<Accommodation[]> {
     FROM room_types
   `;
 
-  // Map room types to their accommodations
-  const accommodations: Accommodation[] = accommodationsResult.map(
+  const accommodationsData: Accommodation[] = accommodationsResult.map(
     (accommodation) => {
       const accommodationRoomTypes: RoomType[] = roomTypesResult
         .filter((roomType) => roomType.accommodation_id === accommodation.id)
@@ -124,7 +126,7 @@ export async function getAccommodations(): Promise<Accommodation[]> {
         id: accommodation.id,
         name: accommodation.name,
         description: accommodation.description,
-        location: accommodation.location,
+        location: accommodation.location, // This should be string | null based on schema
         includesFullBoard: accommodation.includes_full_board,
         inPark: accommodation.in_park,
         roomTypes: accommodationRoomTypes,
@@ -132,5 +134,5 @@ export async function getAccommodations(): Promise<Accommodation[]> {
     }
   );
 
-  return accommodations;
+  return accommodationsData;
 }
