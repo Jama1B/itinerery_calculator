@@ -1,8 +1,21 @@
+
 import { neon } from "@neondatabase/serverless";
 import type { Place, Activity, Accommodation, RoomType } from "@/types/safaris";
 
+const DATABASE_URL_ENV = process.env.DATABASE_URL;
+
+if (!DATABASE_URL_ENV) {
+  // This error will be thrown when the module is loaded if DATABASE_URL is not set.
+  // This will cause the server to fail to handle requests to /api/safari-data correctly.
+  // The API route will catch this during its import of getPlaces/getAccommodations/getConstants.
+  throw new Error(
+    "FATAL: DATABASE_URL environment variable is not set. " +
+    "Please ensure DATABASE_URL is correctly configured in your .env file for the application to connect to the database."
+  );
+}
+
 // Initialize the Neon client
-const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(DATABASE_URL_ENV);
 
 // Fetch constants from the database
 export async function getConstants() {
@@ -10,15 +23,15 @@ export async function getConstants() {
     SELECT id, value FROM constants
   `;
 
-  const constants: Record<string, number> = {};
+  const constantsData: Record<string, number> = {};
   result.forEach((row) => {
-    constants[row.id] = Number(row.value);
+    constantsData[row.id] = Number(row.value);
   });
 
   return {
-    CONCESSION_FEE: constants.concession_fee || 60,
-    CHILD_CONCESSION_FEE: constants.child_concession_fee || 30,
-    VEHICLE_CAPACITY: constants.vehicle_capacity || 7,
+    CONCESSION_FEE: constantsData.concession_fee || 60,
+    CHILD_CONCESSION_FEE: constantsData.child_concession_fee || 30,
+    VEHICLE_CAPACITY: constantsData.vehicle_capacity || 7,
   };
 }
 
