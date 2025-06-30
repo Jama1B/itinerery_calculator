@@ -1079,17 +1079,39 @@ export default function SafariCalculator() {
                   ? activity.highSeasonCost
                   : activity.lowSeasonCost) * vehiclesNeeded;
             } else if (isZanzibarPlace) {
-              // Handle Zanzibar's tiered pricing
+              // Handle Zanzibar's tiered pricing with activity-specific discounts
               const totalClients = getTotalClients();
               const basePrice = isHighSeason ? activity.highSeasonCost : activity.lowSeasonCost;
-              let pricePerPerson = basePrice;
               
-              if (totalClients >= 5) {
-                pricePerPerson *= 0.8; // 20% discount for 5+ people
-              } else if (totalClients >= 3) {
-                pricePerPerson *= 0.9; // 10% discount for 3-4 people
+              let discountMultiplier = 1; // No discount by default
+
+              // Define specific discounts for different Zanzibar activities
+              switch(activityId) {
+                case 'zanzibar-stone-town':
+                  if (totalClients >= 6) discountMultiplier = 0.75; // 25% off for 6+ people
+                  else if (totalClients >= 3) discountMultiplier = 0.85; // 15% off for 3-5 people
+                  break;
+                case 'zanzibar-spice-tour':
+                  if (totalClients >= 9) discountMultiplier = 0.80; // 20% off for 9+ people
+                  else if (totalClients >= 5) discountMultiplier = 0.90; // 10% off for 5-8 people
+                  break;
+                case 'zanzibar-snorking-boat':
+                  if (totalClients >= 7) discountMultiplier = 0.85; // 15% off for 7+ people
+                  else if (totalClients >= 4) discountMultiplier = 0.90; // 10% off for 4-6 people
+                  break;
+                case 'nungwi-beach':
+                  if (totalClients >= 5) discountMultiplier = 0.90; // 10% off for 5+ people
+                  else if (totalClients >= 3) discountMultiplier = 0.95; // 5% off for 3-4 people
+                  break;
+                default:
+                  // A generic fallback for any other Zanzibar activities you might add
+                  if (totalClients >= 5) discountMultiplier = 0.90; // 10% discount
+                  else if (totalClients >= 3) discountMultiplier = 0.95; // 5% discount
+                  break;
               }
 
+              const pricePerPerson = basePrice * discountMultiplier;
+              
               // Children are counted as adults for Zanzibar activities
               const zanzibarActivityCost = pricePerPerson * totalClients;
               adultActivitiesCost += zanzibarActivityCost;
