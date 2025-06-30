@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from "react";
@@ -290,109 +291,119 @@ function SortableDayItem({
                       </Label>
                       <div className="space-y-2">
                         {getPlaceById(place.placeId)?.activities.map(
-                          (activity) => (
-                            <Collapsible
-                              key={activity.id}
-                              className="border rounded-md"
-                            >
-                              <div className="flex items-center justify-between p-2">
-                                <div className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                    checked={place.selectedActivities.includes(
-                                      activity.id
-                                    )}
-                                    onCheckedChange={() =>
-                                      toggleActivity(
-                                        day.id,
-                                        placeIndex,
+                          (activity) => {
+                            const isZanzibarPlace = place.placeId === "zanzibar";
+                            return (
+                              <Collapsible
+                                key={activity.id}
+                                className="border rounded-md"
+                              >
+                                <div className="flex items-center justify-between p-2">
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                      checked={place.selectedActivities.includes(
                                         activity.id
-                                      )
-                                    }
-                                  />
-                                  <label
-                                    htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                    className="font-medium cursor-pointer text-xs md:text-sm"
-                                  >
-                                    {activity.name}
-                                  </label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-green-700 text-xs md:text-sm">
-                                    {formatCurrency(
-                                      isHighSeason
-                                        ? activity.highSeasonCost
-                                        : activity.lowSeasonCost
-                                    )}
-                                    <span className="text-xs text-gray-500 hidden sm:inline">
-                                      {" "}
-                                      {activity.id === "ngorongoro-crater-tour"
-                                        ? "per vehicle"
-                                        : "per adult"}
-                                    </span>
-                                  </span>
-                                  <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
-                                    <svg
-                                      width="15"
-                                      height="15"
-                                      viewBox="0 0 15 15"
-                                      fill="none"
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      className="h-4 w-4"
+                                      )}
+                                      onCheckedChange={() =>
+                                        toggleActivity(
+                                          day.id,
+                                          placeIndex,
+                                          activity.id
+                                        )
+                                      }
+                                    />
+                                    <label
+                                      htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                      className="font-medium cursor-pointer text-xs md:text-sm"
                                     >
-                                      <path
-                                        d="M7.5 12L7.5 3M7.5 3L3.5 7M7.5 3L11.5 7"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      ></path>
-                                    </svg>
-                                  </CollapsibleTrigger>
-                                </div>
-                              </div>
-                              <CollapsibleContent className="p-2 pt-0 border-t">
-                                <p className="text-xs md:text-sm text-gray-600">
-                                  {activity.description}
-                                </p>
-                                <div className="mt-2 space-y-1">
-                                  <p className="text-xs text-gray-500 sm:hidden">
-                                    {activity.id === "ngorongoro-crater-tour"
-                                      ? `Charged per vehicle (${getVehicleCount(
-                                          getTotalClients()
-                                        )} vehicles needed)`
-                                      : "Charged per person"}
-                                  </p>
-                                  {activity.id === "ngorongoro-crater-tour" ? (
-                                    <p className="text-xs text-green-700">
-                                      Total:{" "}
+                                      {activity.name}
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-green-700 text-xs md:text-sm">
                                       {formatCurrency(
-                                        (isHighSeason
+                                        isHighSeason
                                           ? activity.highSeasonCost
-                                          : activity.lowSeasonCost) *
-                                          getVehicleCount(getTotalClients())
-                                      )}{" "}
-                                      for {getVehicleCount(getTotalClients())}{" "}
-                                      vehicle(s)
-                                    </p>
-                                  ) : (
-                                    activity.id !==
-                                      "ngorongoro-crater-tour" && (
-                                      <p className="text-xs text-green-700">
-                                        Child price:{" "}
-                                        {formatCurrency(
-                                          isHighSeason
-                                            ? activity.childHighSeasonCost
-                                            : activity.childLowSeasonCost
-                                        )}{" "}
-                                        per child
-                                      </p>
-                                    )
-                                  )}
+                                          : activity.lowSeasonCost
+                                      )}
+                                      <span className="text-xs text-gray-500 hidden sm:inline">
+                                        {" "}
+                                        {activity.id === "ngorongoro-crater-tour"
+                                          ? "per vehicle"
+                                          : isZanzibarPlace
+                                          ? "per person (group discounts apply)"
+                                          : "per adult"}
+                                      </span>
+                                    </span>
+                                    <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
+                                      <svg
+                                        width="15"
+                                        height="15"
+                                        viewBox="0 0 15 15"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4"
+                                      >
+                                        <path
+                                          d="M7.5 12L7.5 3M7.5 3L3.5 7M7.5 3L11.5 7"
+                                          stroke="currentColor"
+                                          strokeWidth="1.5"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        ></path>
+                                      </svg>
+                                    </CollapsibleTrigger>
+                                  </div>
                                 </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          )
+                                <CollapsibleContent className="p-2 pt-0 border-t">
+                                  <p className="text-xs md:text-sm text-gray-600">
+                                    {activity.description}
+                                  </p>
+                                  <div className="mt-2 space-y-1">
+                                    {isZanzibarPlace && (
+                                      <p className="text-xs text-green-700">
+                                        Note: Price per person decreases for larger groups.
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-gray-500 sm:hidden">
+                                      {activity.id === "ngorongoro-crater-tour"
+                                        ? `Charged per vehicle (${getVehicleCount(
+                                            getTotalClients()
+                                          )} vehicles needed)`
+                                        : "Charged per person"}
+                                    </p>
+                                    {activity.id === "ngorongoro-crater-tour" ? (
+                                      <p className="text-xs text-green-700">
+                                        Total:{" "}
+                                        {formatCurrency(
+                                          (isHighSeason
+                                            ? activity.highSeasonCost
+                                            : activity.lowSeasonCost) *
+                                            getVehicleCount(getTotalClients())
+                                        )}{" "}
+                                        for {getVehicleCount(getTotalClients())}{" "}
+                                        vehicle(s)
+                                      </p>
+                                    ) : (
+                                      activity.id !== "ngorongoro-crater-tour" &&
+                                      !isZanzibarPlace && (
+                                        <p className="text-xs text-green-700">
+                                          Child price:{" "}
+                                          {formatCurrency(
+                                            isHighSeason
+                                              ? activity.childHighSeasonCost
+                                              : activity.childLowSeasonCost
+                                          )}{" "}
+                                          per child
+                                        </p>
+                                      )
+                                    )}
+                                  </div>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )
+                          }
                         )}
                       </div>
                     </div>
@@ -463,6 +474,7 @@ function SortableDayItem({
                           const allocation = day.roomAllocation.find(
                             (r) => r.roomTypeId === roomType.id
                           );
+  
                           const quantity = allocation ? allocation.quantity : 0;
 
                           return (
@@ -1057,6 +1069,8 @@ export default function SafariCalculator() {
         place.selectedActivities.forEach((activityId) => {
           const activity = getActivityById(place.placeId, activityId);
           if (activity) {
+            const isZanzibarPlace = place.placeId === 'zanzibar';
+
             // Special handling for Ngorongoro Crater Floor Tour - charged per vehicle
             if (activityId === "ngorongoro-crater-tour") {
               const vehiclesNeeded = getVehicleCount(getTotalClients());
@@ -1064,6 +1078,22 @@ export default function SafariCalculator() {
                 (isHighSeason
                   ? activity.highSeasonCost
                   : activity.lowSeasonCost) * vehiclesNeeded;
+            } else if (isZanzibarPlace) {
+              // Handle Zanzibar's tiered pricing
+              const totalClients = getTotalClients();
+              const basePrice = isHighSeason ? activity.highSeasonCost : activity.lowSeasonCost;
+              let pricePerPerson = basePrice;
+              
+              if (totalClients >= 5) {
+                pricePerPerson *= 0.8; // 20% discount for 5+ people
+              } else if (totalClients >= 3) {
+                pricePerPerson *= 0.9; // 10% discount for 3-4 people
+              }
+
+              // Children are counted as adults for Zanzibar activities
+              const zanzibarActivityCost = pricePerPerson * totalClients;
+              adultActivitiesCost += zanzibarActivityCost;
+            
             } else {
               // All other activities - charged per person
               adultActivitiesCost +=
