@@ -429,7 +429,7 @@ function SortableDayItem({
               >
                 <SelectTrigger
                   id={`accommodation-${day.id}`}
-                  className="text-sm"
+                  className="text-sm h-auto"
                 >
                   <SelectValue placeholder="Select accommodation" />
                 </SelectTrigger>
@@ -437,11 +437,40 @@ function SortableDayItem({
                   <SelectItem value="none" className="text-sm">
                     No accommodation (departure day)
                   </SelectItem>
-                  {accommodations.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id} className="text-sm">
-                      {acc.name}
-                    </SelectItem>
-                  ))}
+                  {accommodations.map((acc) => {
+                    // Find a double room (max occupancy of 2) to display a representative price
+                    const doubleRoom = acc.roomTypes.find(
+                      (rt) => rt.maxOccupancy === 2
+                    );
+                    const price = doubleRoom
+                      ? isHighSeason
+                        ? doubleRoom.highSeasonCost
+                        : doubleRoom.lowSeasonCost
+                      : null;
+
+                    return (
+                      <SelectItem key={acc.id} value={acc.id} className="text-sm">
+                        <div className="flex justify-between items-center w-full gap-4">
+                          <div className="flex flex-col items-start">
+                            <span>{acc.name}</span>
+                            {acc.location && (
+                              <Badge
+                                variant="secondary"
+                                className="text-xs font-normal mt-1"
+                              >
+                                {acc.location}
+                              </Badge>
+                            )}
+                          </div>
+                          {price !== null && (
+                            <span className="font-medium text-green-700 whitespace-nowrap">
+                              {formatCurrency(price)}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
 
