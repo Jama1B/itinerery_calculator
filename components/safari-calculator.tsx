@@ -450,23 +450,23 @@ function SortableDayItem({
 
                     return (
                       <SelectItem key={acc.id} value={acc.id} className="text-sm">
-                        <div className="flex justify-between items-center w-full gap-4">
-                          <div className="flex flex-col items-start">
-                            <span>{acc.name}</span>
+                        <div className="flex justify-between items-center w-full gap-2">
+                          <span className="truncate flex-grow">{acc.name}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             {acc.location && (
                               <Badge
                                 variant="secondary"
-                                className="text-xs font-normal mt-1"
+                                className="text-xs font-normal"
                               >
                                 {acc.location}
                               </Badge>
                             )}
+                            {price !== null && (
+                              <span className="font-medium text-green-700 whitespace-nowrap w-[80px] text-right">
+                                {formatCurrency(price)}
+                              </span>
+                            )}
                           </div>
-                          {price !== null && (
-                            <span className="font-medium text-green-700 whitespace-nowrap">
-                              {formatCurrency(price)}
-                            </span>
-                          )}
                         </div>
                       </SelectItem>
                     );
