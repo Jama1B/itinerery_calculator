@@ -37,8 +37,8 @@ export async function getConstants() {
   });
 
   return {
-    CONCESSION_FEE: constantsData.concession_fee || 60,
-    CHILD_CONCESSION_FEE: constantsData.child_concession_fee || 30,
+    CONCESSION_FEE: constantsData.concession_fee || 59,
+    CHILD_CONCESSION_FEE: constantsData.child_concession_fee || 11.8,
     VEHICLE_CAPACITY: constantsData.vehicle_capacity || 7,
   };
 }
