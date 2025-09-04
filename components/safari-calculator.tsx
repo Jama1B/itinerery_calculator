@@ -749,8 +749,8 @@ export default function SafariCalculator() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
   const [constants, setConstants] = useState({
-    CONCESSION_FEE: 60,
-    CHILD_CONCESSION_FEE: 30,
+    CONCESSION_FEE: 59,
+    CHILD_CONCESSION_FEE: 11.8,
     VEHICLE_CAPACITY: 7,
   });
   const [isLoading, setIsLoading] = useState(true);
