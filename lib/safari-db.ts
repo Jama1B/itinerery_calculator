@@ -1,6 +1,7 @@
 
 import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 import type { Place, Activity, Accommodation, RoomType } from "@/types/safaris";
+import * as mockData from "./mock-data";
 
 let sql: NeonQueryFunction<false, false>;
 
@@ -24,115 +25,128 @@ if (!DATABASE_URL_ENV) {
 
 // Fetch constants from the database
 export async function getConstants() {
-  // The check for sql's validity is now implicit:
-  // if it wasn't initialized properly (due to missing DATABASE_URL),
-  // calling it will throw the error defined above.
-  const result = await sql`
-    SELECT id, value FROM constants
-  `;
+  try {
+    const result = await sql`
+      SELECT id, value FROM constants
+    `;
 
-  const constantsData: Record<string, number> = {};
-  result.forEach((row) => {
-    constantsData[row.id] = Number(row.value);
-  });
+    const constantsData: Record<string, number> = {};
+    result.forEach((row) => {
+      constantsData[row.id] = Number(row.value);
+    });
 
-  return {
-    CONCESSION_FEE: constantsData.concession_fee || 59,
-    CHILD_CONCESSION_FEE: constantsData.child_concession_fee || 11.8,
-    VEHICLE_CAPACITY: constantsData.vehicle_capacity || 7,
-  };
+    return {
+      CONCESSION_FEE: constantsData.concession_fee || 59,
+      CHILD_CONCESSION_FEE: constantsData.child_concession_fee || 11.8,
+      VEHICLE_CAPACITY: constantsData.vehicle_capacity || 7,
+    };
+  } catch (error) {
+    console.error("Error fetching constants from DB, using mock data:", error);
+    return mockData.CONSTANTS;
+  }
 }
 
 // Fetch all places with their activities
 export async function getPlaces(): Promise<Place[]> {
-  const placesResult = await sql`
-    SELECT id, name, description FROM places
-  `;
+  try {
+    const placesResult = await sql`
+      SELECT id, name, description FROM places
+    `;
 
-  const activitiesResult = await sql`
-    SELECT 
-      id, 
-      place_id, 
-      name, 
-      description, 
-      high_season_cost, 
-      low_season_cost, 
-      child_high_season_cost, 
-      child_low_season_cost 
-    FROM activities
-  `;
+    const activitiesResult = await sql`
+      SELECT 
+        id, 
+        place_id, 
+        name, 
+        description, 
+        high_season_cost, 
+        low_season_cost, 
+        child_high_season_cost, 
+        child_low_season_cost 
+      FROM activities
+    `;
 
-  const placesData: Place[] = placesResult.map((place) => {
-    const placeActivities: Activity[] = activitiesResult
-      .filter((activity) => activity.place_id === place.id)
-      .map((activity) => ({
-        id: activity.id,
-        name: activity.name,
-        description: activity.description,
-        highSeasonCost: Number(activity.high_season_cost),
-        lowSeasonCost: Number(activity.low_season_cost),
-        childHighSeasonCost: Number(activity.child_high_season_cost),
-        childLowSeasonCost: Number(activity.child_low_season_cost),
-      }));
+    const placesData: Place[] = placesResult.map((place) => {
+      const placeActivities: Activity[] = activitiesResult
+        .filter((activity) => activity.place_id === place.id)
+        .map((activity) => ({
+          id: activity.id,
+          name: activity.name,
+          description: activity.description,
+          highSeasonCost: Number(activity.high_season_cost),
+          lowSeasonCost: Number(activity.low_season_cost),
+          childHighSeasonCost: Number(activity.child_high_season_cost),
+          childLowSeasonCost: Number(activity.child_low_season_cost),
+        }));
 
-    return {
-      id: place.id,
-      name: place.name,
-      description: place.description,
-      activities: placeActivities,
-    };
-  });
+      return {
+        id: place.id,
+        name: place.name,
+        description: place.description,
+        activities: placeActivities,
+      };
+    });
 
-  return placesData;
+    return placesData;
+  } catch (error) {
+    console.error("Error fetching places from DB, using mock data:", error);
+    return mockData.PLACES;
+  }
 }
 
 // Fetch all accommodations with their room types
 export async function getAccommodations(): Promise<Accommodation[]> {
-  const accommodationsResult = await sql`
-    SELECT 
-      id, 
-      name, 
-      description, 
-      location, 
-      includes_full_board, 
-      in_park 
-    FROM accommodations
-  `;
+  try {
+    const accommodationsResult = await sql`
+      SELECT 
+        id, 
+        name, 
+        description, 
+        location, 
+        includes_full_board, 
+        in_park 
+      FROM accommodations
+    `;
 
-  const roomTypesResult = await sql`
-    SELECT 
-      id, 
-      accommodation_id, 
-      name, 
-      max_occupancy, 
-      high_season_cost, 
-      low_season_cost 
-    FROM room_types
-  `;
+    const roomTypesResult = await sql`
+      SELECT 
+        id, 
+        accommodation_id, 
+        name, 
+        max_occupancy, 
+        high_season_cost, 
+        low_season_cost 
+      FROM room_types
+    `;
 
-  const accommodationsData: Accommodation[] = accommodationsResult.map(
-    (accommodation) => {
-      const accommodationRoomTypes: RoomType[] = roomTypesResult
-        .filter((roomType) => roomType.accommodation_id === accommodation.id)
-        .map((roomType) => ({
-          id: roomType.id,
-          name: roomType.name,
-          maxOccupancy: roomType.max_occupancy,
-          highSeasonCost: Number(roomType.high_season_cost),
-          lowSeasonCost: Number(roomType.low_season_cost),
-        }));
+    const accommodationsData: Accommodation[] = accommodationsResult.map(
+      (accommodation) => {
+        const accommodationRoomTypes: RoomType[] = roomTypesResult
+          .filter((roomType) => roomType.accommodation_id === accommodation.id)
+          .map((roomType) => ({
+            id: roomType.id,
+            name: roomType.name,
+            maxOccupancy: roomType.max_occupancy,
+            highSeasonCost: Number(roomType.high_season_cost),
+            lowSeasonCost: Number(roomType.low_season_cost),
+          }));
 
-      return {
-        id: accommodation.id,
-        name: accommodation.name,
-        description: accommodation.description,
-        location: accommodation.location, // This should be string | null based on schema
-        includesFullBoard: accommodation.includes_full_board,
-        inPark: accommodation.in_park,
-        roomTypes: accommodationRoomTypes,
-      };
-    }
-  );
+        return {
+          id: accommodation.id,
+          name: accommodation.name,
+          description: accommodation.description,
+          location: accommodation.location, // This should be string | null based on schema
+          includesFullBoard: accommodation.includes_full_board,
+          inPark: accommodation.in_park,
+          roomTypes: accommodationRoomTypes,
+        };
+      }
+    );
 
-  return accommodationsData;
+    return accommodationsData;
+  } catch (error) {
+    console.error("Error fetching accommodations from DB, using mock data:", error);
+    return mockData.ACCOMMODATIONS;
+  }
 }
+
