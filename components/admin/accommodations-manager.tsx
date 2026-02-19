@@ -33,6 +33,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import type { Accommodation, RoomType } from "@/types/safaris";
+import { saveAccommodationAction, deleteAccommodationAction } from "@/lib/actions";
 
 interface AccommodationsManagerProps {
   accommodations: Accommodation[];
@@ -59,11 +60,8 @@ export function AccommodationsManager({
     ) {
       setIsDeleting(id);
       try {
-        const response = await fetch(`/api/accommodations?id=${id}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) throw new Error("Failed to delete accommodation");
+        const success = await deleteAccommodationAction(id);
+        if (!success) throw new Error("Failed to delete accommodation");
 
         toast({
           title: "Accommodation deleted",
@@ -242,9 +240,8 @@ function AddAccommodationDialog({
 
   // Add a new empty room type
   const addRoomType = () => {
-    const newRoomTypeId = `${formData.id}-room-${
-      formData.roomTypes.length + 1
-    }`;
+    const newRoomTypeId = `${formData.id}-room-${formData.roomTypes.length + 1
+      }`;
     setFormData((prev) => ({
       ...prev,
       roomTypes: [
@@ -305,15 +302,8 @@ function AddAccommodationDialog({
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/accommodations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save accommodation");
+      const success = await saveAccommodationAction(formData as Accommodation);
+      if (!success) throw new Error("Failed to save accommodation");
 
       toast({
         title: "Accommodation saved",
@@ -648,9 +638,8 @@ function EditAccommodationDialog({
 
   // Add a new empty room type
   const addRoomType = () => {
-    const newRoomTypeId = `${formData.id}-room-${
-      formData.roomTypes.length + 1
-    }`;
+    const newRoomTypeId = `${formData.id}-room-${formData.roomTypes.length + 1
+      }`;
     setFormData((prev) => ({
       ...prev,
       roomTypes: [
@@ -711,15 +700,8 @@ function EditAccommodationDialog({
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/accommodations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save accommodation");
+      const success = await saveAccommodationAction(formData);
+      if (!success) throw new Error("Failed to save accommodation");
 
       toast({
         title: "Accommodation updated",

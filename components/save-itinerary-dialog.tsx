@@ -18,7 +18,7 @@ import type { SavedItinerary } from "@/lib/db";
 interface SaveItineraryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (name: string) => Promise<void>;
+  onSave: (name: string) => Promise<any>;
   currentItinerary: SavedItinerary | null;
 }
 

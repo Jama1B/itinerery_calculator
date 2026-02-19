@@ -58,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SaveItineraryDialog } from "@/components/save-itinerary-dialog";
 import { LoadItineraryDialog } from "@/components/load-itinerary-dialog";
 import type { SavedItinerary } from "@/lib/db";
+import { saveItineraryAction, deleteItineraryAction } from "@/lib/actions";
 import type {
   DayItinerary,
   RoomAllocation,
@@ -190,9 +191,9 @@ function SortableDayItem({
           <span className="font-medium truncate max-w-[150px] sm:max-w-[250px] md:max-w-none">
             {day.places.length > 0
               ? day.places
-                  .map((p) => getPlaceById(p.placeId)?.name || "")
-                  .filter(Boolean)
-                  .join(" & ")
+                .map((p) => getPlaceById(p.placeId)?.name || "")
+                .filter(Boolean)
+                .join(" & ")
               : `Day ${day.id} Itinerary`}
           </span>
         </div>
@@ -332,8 +333,8 @@ function SortableDayItem({
                                         {activity.id === "ngorongoro-crater-tour"
                                           ? "per vehicle"
                                           : isZanzibarPlace
-                                          ? "per person (group discounts apply)"
-                                          : "per adult"}
+                                            ? "per person (group discounts apply)"
+                                            : "per adult"}
                                       </span>
                                     </span>
                                     <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
@@ -369,8 +370,8 @@ function SortableDayItem({
                                     <p className="text-xs text-gray-500 sm:hidden">
                                       {activity.id === "ngorongoro-crater-tour"
                                         ? `Charged per vehicle (${getVehicleCount(
-                                            getTotalClients()
-                                          )} vehicles needed)`
+                                          getTotalClients()
+                                        )} vehicles needed)`
                                         : "Charged per person"}
                                     </p>
                                     {activity.id === "ngorongoro-crater-tour" ? (
@@ -380,7 +381,7 @@ function SortableDayItem({
                                           (isHighSeason
                                             ? activity.highSeasonCost
                                             : activity.lowSeasonCost) *
-                                            getVehicleCount(getTotalClients())
+                                          getVehicleCount(getTotalClients())
                                         )}{" "}
                                         for {getVehicleCount(getTotalClients())}{" "}
                                         vehicle(s)
@@ -503,7 +504,7 @@ function SortableDayItem({
                           const allocation = day.roomAllocation.find(
                             (r) => r.roomTypeId === roomType.id
                           );
-  
+
                           const quantity = allocation ? allocation.quantity : 0;
 
                           return (
@@ -585,24 +586,24 @@ function SortableDayItem({
                             day.roomAllocation,
                             day.selectedAccommodation
                           ) < getTotalClients() && (
-                            <Badge
-                              variant="destructive"
-                              className="w-full sm:w-auto text-center"
-                            >
-                              Not enough rooms
-                            </Badge>
-                          )}
+                              <Badge
+                                variant="destructive"
+                                className="w-full sm:w-auto text-center"
+                              >
+                                Not enough rooms
+                              </Badge>
+                            )}
                           {calculateTotalClientsAccommodated(
                             day.roomAllocation,
                             day.selectedAccommodation
                           ) > getTotalClients() && (
-                            <Badge
-                              variant="outline"
-                              className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
-                            >
-                              Extra capacity
-                            </Badge>
-                          )}
+                              <Badge
+                                variant="outline"
+                                className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
+                              >
+                                Extra capacity
+                              </Badge>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -610,22 +611,22 @@ function SortableDayItem({
                     {/* Concession Fee Toggle */}
                     {getAccommodationById(day.selectedAccommodation)
                       ?.inPark && (
-                      <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-md">
-                        <Checkbox
-                          id={`concession-${day.id}`}
-                          checked={day.hasConcessionFee}
-                          onCheckedChange={() => toggleConcessionFee(day.id)}
-                        />
-                        <label
-                          htmlFor={`concession-${day.id}`}
-                          className="text-xs md:text-sm font-medium cursor-pointer"
-                        >
-                          Add park concession fee (${constants.CONCESSION_FEE}{" "}
-                          per adult, ${constants.CHILD_CONCESSION_FEE} per
-                          child)
-                        </label>
-                      </div>
-                    )}
+                        <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-md">
+                          <Checkbox
+                            id={`concession-${day.id}`}
+                            checked={day.hasConcessionFee}
+                            onCheckedChange={() => toggleConcessionFee(day.id)}
+                          />
+                          <label
+                            htmlFor={`concession-${day.id}`}
+                            className="text-xs md:text-sm font-medium cursor-pointer"
+                          >
+                            Add park concession fee (${constants.CONCESSION_FEE}{" "}
+                            per adult, ${constants.CHILD_CONCESSION_FEE} per
+                            child)
+                          </label>
+                        </div>
+                      )}
                   </div>
                 )}
             </div>
@@ -716,7 +717,25 @@ function SortableDayItem({
   );
 }
 
-export default function SafariCalculator() {
+interface SafariCalculatorProps {
+  initialPlaces?: Place[];
+  initialAccommodations?: Accommodation[];
+  initialConstants?: {
+    CONCESSION_FEE: number;
+    CHILD_CONCESSION_FEE: number;
+    VEHICLE_CAPACITY: number;
+  };
+}
+
+export default function SafariCalculator({
+  initialPlaces = [],
+  initialAccommodations = [],
+  initialConstants = {
+    CONCESSION_FEE: 59,
+    CHILD_CONCESSION_FEE: 11.8,
+    VEHICLE_CAPACITY: 7,
+  },
+}: SafariCalculatorProps) {
   const [days, setDays] = useState<number>(3);
   const {
     adults,
@@ -746,14 +765,12 @@ export default function SafariCalculator() {
   const { toast } = useToast();
 
   // State for database data
-  const [places, setPlaces] = useState<Place[]>([]);
-  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
-  const [constants, setConstants] = useState({
-    CONCESSION_FEE: 59,
-    CHILD_CONCESSION_FEE: 11.8,
-    VEHICLE_CAPACITY: 7,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const [places, setPlaces] = useState<Place[]>(initialPlaces);
+  const [accommodations, setAccommodations] = useState<Accommodation[]>(
+    initialAccommodations
+  );
+  const [constants, setConstants] = useState(initialConstants);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Setup DnD sensors
   const sensors = useSensors(
@@ -767,33 +784,7 @@ export default function SafariCalculator() {
     })
   );
 
-  // Fetch data from the database
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/safari-data");
-        if (!response.ok) {
-          throw new Error("Failed to fetch safari data");
-        }
-        const data = await response.json();
-        setPlaces(data.places);
-        setAccommodations(data.accommodations);
-        setConstants(data.constants);
-      } catch (error) {
-        console.error("Error fetching safari data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load safari data. Please refresh the page.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [toast]);
+  // No longer need client-side fetch on mount
 
   // Initialize itinerary when days change
   useEffect(() => {
@@ -1111,11 +1102,11 @@ export default function SafariCalculator() {
               // Handle Zanzibar's tiered pricing with activity-specific discounts
               const totalClients = getTotalClients();
               const basePrice = isHighSeason ? activity.highSeasonCost : activity.lowSeasonCost;
-              
+
               let discountMultiplier = 1; // No discount by default
 
               // Define specific discounts for different Zanzibar activities
-              switch(activityId) {
+              switch (activityId) {
                 case 'zanzibar-stone-town':
                   if (totalClients >= 6) discountMultiplier = 0.75; // 25% off for 6+ people
                   else if (totalClients >= 3) discountMultiplier = 0.85; // 15% off for 3-5 people
@@ -1140,11 +1131,11 @@ export default function SafariCalculator() {
               }
 
               const pricePerPerson = basePrice * discountMultiplier;
-              
+
               // Children are counted as adults for Zanzibar activities
               const zanzibarActivityCost = pricePerPerson * totalClients;
               adultActivitiesCost += zanzibarActivityCost;
-            
+
             } else {
               // All other activities - charged per person
               adultActivitiesCost +=
@@ -1282,10 +1273,9 @@ export default function SafariCalculator() {
     doc.text(`Number of Children (<15): ${children}`, 20, 55);
     doc.text(`Season: ${isHighSeason ? "High Season" : "Low Season"}`, 20, 65);
     doc.text(
-      `Vehicles: ${getVehicleCount(getTotalClients())} ${
-        useManualVehicles
-          ? "(manually set)"
-          : `(${constants.VEHICLE_CAPACITY} clients per vehicle)`
+      `Vehicles: ${getVehicleCount(getTotalClients())} ${useManualVehicles
+        ? "(manually set)"
+        : `(${constants.VEHICLE_CAPACITY} clients per vehicle)`
       }`,
       20,
       75
@@ -1540,25 +1530,13 @@ export default function SafariCalculator() {
         itinerary,
       };
 
-      const response = await fetch("/api/itinerary", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          data,
-          id: currentSavedItinerary?.id,
-        }),
-      });
+      const savedItinerary = await saveItineraryAction(
+        name,
+        data,
+        currentSavedItinerary?.id
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to save itinerary");
-      }
-
-      const savedItinerary = await response.json();
       setCurrentSavedItinerary(savedItinerary);
-
       return savedItinerary;
     } catch (error) {
       console.error("Error saving itinerary:", error);
@@ -1599,11 +1577,9 @@ export default function SafariCalculator() {
   // Delete itinerary from database
   const handleDeleteItinerary = async (id: string) => {
     try {
-      const response = await fetch(`/api/itinerary?id=${id}`, {
-        method: "DELETE",
-      });
+      const success = await deleteItineraryAction(id);
 
-      if (!response.ok) {
+      if (!success) {
         throw new Error("Failed to delete itinerary");
       }
 

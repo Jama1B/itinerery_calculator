@@ -32,6 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import type { Place, Activity } from "@/types/safaris";
+import { savePlaceAction, deletePlaceAction } from "@/lib/actions";
 
 interface PlacesManagerProps {
   places: Place[];
@@ -54,11 +55,8 @@ export function PlacesManager({ places, onPlacesChange }: PlacesManagerProps) {
     ) {
       setIsDeleting(id);
       try {
-        const response = await fetch(`/api/places?id=${id}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) throw new Error("Failed to delete place");
+        const success = await deletePlaceAction(id);
+        if (!success) throw new Error("Failed to delete place");
 
         toast({
           title: "Place deleted",
@@ -215,9 +213,8 @@ function AddPlaceDialog({ open, onOpenChange, onSave }: AddPlaceDialogProps) {
 
   // Add a new empty activity
   const addActivity = () => {
-    const newActivityId = `${formData.id}-activity-${
-      formData.activities.length + 1
-    }`;
+    const newActivityId = `${formData.id}-activity-${formData.activities.length + 1
+      }`;
     setFormData((prev) => ({
       ...prev,
       activities: [
@@ -279,15 +276,8 @@ function AddPlaceDialog({ open, onOpenChange, onSave }: AddPlaceDialogProps) {
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/places", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save place");
+      const success = await savePlaceAction(formData as Place);
+      if (!success) throw new Error("Failed to save place");
 
       toast({
         title: "Place saved",
@@ -607,9 +597,8 @@ function EditPlaceDialog({
 
   // Add a new empty activity
   const addActivity = () => {
-    const newActivityId = `${formData.id}-activity-${
-      formData.activities.length + 1
-    }`;
+    const newActivityId = `${formData.id}-activity-${formData.activities.length + 1
+      }`;
     setFormData((prev) => ({
       ...prev,
       activities: [
@@ -671,15 +660,8 @@ function EditPlaceDialog({
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/places", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save place");
+      const success = await savePlaceAction(formData);
+      if (!success) throw new Error("Failed to save place");
 
       toast({
         title: "Place updated",

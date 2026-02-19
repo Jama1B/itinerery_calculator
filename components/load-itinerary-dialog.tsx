@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -18,6 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { getItinerariesAction } from "@/lib/actions";
 
 interface LoadItineraryDialogProps {
   open: boolean;
@@ -46,9 +46,7 @@ export function LoadItineraryDialog({
   const fetchItineraries = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/itinerary");
-      if (!response.ok) throw new Error("Failed to fetch itineraries");
-      const data = await response.json();
+      const data = await getItinerariesAction();
       setItineraries(data);
     } catch (error) {
       console.error("Error fetching itineraries:", error);

@@ -150,3 +150,126 @@ export async function getAccommodations(): Promise<Accommodation[]> {
   }
 }
 
+
+// Save or update a place and its activities
+export async function savePlace(place: Place) {
+  try {
+    await sql`BEGIN`;
+
+    await sql`
+      INSERT INTO places (id, name, description)
+      VALUES (${place.id}, ${place.name}, ${place.description})
+      ON CONFLICT (id) DO UPDATE 
+      SET name = EXCLUDED.name, description = EXCLUDED.description
+    `;
+
+    if (place.activities && place.activities.length > 0) {
+      for (const activity of place.activities) {
+        await sql`
+          INSERT INTO activities (
+            id, place_id, name, description, 
+            high_season_cost, low_season_cost, 
+            child_high_season_cost, child_low_season_cost
+          )
+          VALUES (
+            ${activity.id}, ${place.id}, ${activity.name}, ${activity.description || ""}, 
+            ${activity.highSeasonCost || 0}, ${activity.lowSeasonCost || 0}, 
+            ${activity.childHighSeasonCost || 0}, ${activity.childLowSeasonCost || 0}
+          )
+          ON CONFLICT (id) DO UPDATE 
+          SET 
+            name = EXCLUDED.name, 
+            description = EXCLUDED.description,
+            high_season_cost = EXCLUDED.high_season_cost,
+            low_season_cost = EXCLUDED.low_season_cost,
+            child_high_season_cost = EXCLUDED.child_high_season_cost,
+            child_low_season_cost = EXCLUDED.child_low_season_cost
+        `;
+      }
+    }
+
+    await sql`COMMIT`;
+    return true;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error saving place:", error);
+    throw error;
+  }
+}
+
+// Delete a place and its activities
+export async function deletePlace(id: string) {
+  try {
+    await sql`BEGIN`;
+    await sql`DELETE FROM activities WHERE place_id = ${id}`;
+    const result = await sql`DELETE FROM places WHERE id = ${id} RETURNING id`;
+    await sql`COMMIT`;
+    return result.length > 0;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error deleting place:", error);
+    throw error;
+  }
+}
+
+// Save or update an accommodation and its room types
+export async function saveAccommodation(acc: Accommodation) {
+  try {
+    await sql`BEGIN`;
+
+    await sql`
+      INSERT INTO accommodations (id, name, description, location, includes_full_board, in_park)
+      VALUES (${acc.id}, ${acc.name}, ${acc.description || ""}, ${acc.location ? acc.location.toString() : null}, ${acc.includesFullBoard ?? true}, ${acc.inPark ?? false})
+      ON CONFLICT (id) DO UPDATE 
+      SET 
+        name = EXCLUDED.name, 
+        description = EXCLUDED.description,
+        location = EXCLUDED.location,
+        includes_full_board = EXCLUDED.includes_full_board,
+        in_park = EXCLUDED.in_park
+    `;
+
+    if (acc.roomTypes && acc.roomTypes.length > 0) {
+      for (const rt of acc.roomTypes) {
+        await sql`
+          INSERT INTO room_types (
+            id, accommodation_id, name, max_occupancy, 
+            high_season_cost, low_season_cost
+          )
+          VALUES (
+            ${rt.id}, ${acc.id}, ${rt.name}, ${rt.maxOccupancy || 1}, 
+            ${rt.highSeasonCost || 0}, ${rt.lowSeasonCost || 0}
+          )
+          ON CONFLICT (id) DO UPDATE 
+          SET 
+            name = EXCLUDED.name, 
+            max_occupancy = EXCLUDED.max_occupancy,
+            high_season_cost = EXCLUDED.high_season_cost,
+            low_season_cost = EXCLUDED.low_season_cost
+        `;
+      }
+    }
+
+    await sql`COMMIT`;
+    return true;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error saving accommodation:", error);
+    throw error;
+  }
+}
+
+// Delete an accommodation and its room types
+export async function deleteAccommodation(id: string) {
+  try {
+    await sql`BEGIN`;
+    await sql`DELETE FROM room_types WHERE accommodation_id = ${id}`;
+    const result = await sql`DELETE FROM accommodations WHERE id = ${id} RETURNING id`;
+    await sql`COMMIT`;
+    return result.length > 0;
+  } catch (error) {
+    await sql`ROLLBACK`;
+    console.error("Error deleting accommodation:", error);
+    throw error;
+  }
+}

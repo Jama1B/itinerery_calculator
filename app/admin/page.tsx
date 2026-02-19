@@ -14,6 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { PlacesManager } from "@/components/admin/places-manager";
 import { AccommodationsManager } from "@/components/admin/accommodations-manager";
+import {
+  getPlacesAction,
+  getAccommodationsAction
+} from "@/lib/actions";
 import type { Place, Accommodation } from "@/types/safaris";
 
 export default function AdminPage() {
@@ -27,9 +31,7 @@ export default function AdminPage() {
   const fetchPlaces = async () => {
     setIsLoadingPlaces(true);
     try {
-      const response = await fetch("/api/places");
-      if (!response.ok) throw new Error("Failed to fetch places");
-      const data = await response.json();
+      const data = await getPlacesAction();
       setPlaces(data);
     } catch (error) {
       console.error("Error fetching places:", error);
@@ -47,9 +49,7 @@ export default function AdminPage() {
   const fetchAccommodations = async () => {
     setIsLoadingAccommodations(true);
     try {
-      const response = await fetch("/api/accommodations");
-      if (!response.ok) throw new Error("Failed to fetch accommodations");
-      const data = await response.json();
+      const data = await getAccommodationsAction();
       setAccommodations(data);
     } catch (error) {
       console.error("Error fetching accommodations:", error);
