@@ -21,8 +21,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import {
+  Compass,
   Calendar,
   Users,
   DollarSign,
@@ -36,7 +39,18 @@ import {
   Save,
   FileDown,
   GripVertical,
+  CheckCircle2,
+  Clock,
+  Settings2,
+  Layers,
+  Sparkles,
+  Search,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -124,6 +138,157 @@ interface SortableDayProps {
   updateItinerary: (id: number, field: keyof DayItinerary, value: any) => void;
 }
 
+// Sub-component for destination selection to manage local state
+function PlaceSelector({
+  place,
+  places,
+  dayId,
+  placeIndex,
+  updateDayPlace
+}: {
+  place: { placeId: string },
+  places: Place[],
+  dayId: number,
+  placeIndex: number,
+  updateDayPlace: (dayId: number, placeIndex: number, placeId: string) => void
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-11 border-primary/10 hover:bg-white focus:ring-primary/20 font-medium text-left"
+        >
+          <span className="truncate">
+            {place.placeId
+              ? places.find((p) => p.id === place.placeId)?.name
+              : "Select Destination..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[calc(100vw-32px)] md:w-[300px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search destination..." />
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            <CommandEmpty>No destination found.</CommandEmpty>
+            <CommandGroup>
+              {places.map((placeOption) => (
+                <CommandItem
+                  key={placeOption.id}
+                  value={placeOption.name}
+                  onSelect={() => {
+                    updateDayPlace(dayId, placeIndex, placeOption.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      place.placeId === placeOption.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm">{placeOption.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">{placeOption.description || "Safari destination"}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Sub-component for accommodation selection to manage local state
+function AccommodationSelector({
+  selectedId,
+  accommodations,
+  onSelect
+}: {
+  selectedId: string | null,
+  accommodations: Accommodation[],
+  onSelect: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-12 border-primary/10 hover:bg-white focus:ring-primary/20 font-medium text-left"
+        >
+          <span className="truncate">
+            {selectedId && selectedId !== "none"
+              ? accommodations.find((a) => a.id === selectedId)?.name
+              : selectedId === "none" ? "No accommodation needed" : "Browse Accommodations..."}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[calc(100vw-32px)] md:w-[400px] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search accommodation..." />
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            <CommandEmpty>No accommodation found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="none"
+                onSelect={() => {
+                  onSelect("none");
+                  setOpen(false);
+                }}
+                className="text-destructive font-semibold"
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    selectedId === "none" ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                No accommodation needed
+              </CommandItem>
+              {accommodations.map((acc) => (
+                <CommandItem
+                  key={acc.id}
+                  value={acc.name}
+                  onSelect={() => {
+                    onSelect(acc.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedId === acc.id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{acc.name}</span>
+                      {acc.inPark && <Badge variant="outline" className="text-[9px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-100">In-Park</Badge>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[300px]">{acc.description}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function SortableDayItem({
   day,
   places,
@@ -173,540 +338,335 @@ function SortableDayItem({
       ref={setNodeRef}
       style={style}
     >
-      <AccordionTrigger className="hover:bg-green-50 px-3 md:px-4 rounded-md group">
-        <div className="flex items-center gap-2 text-sm md:text-base w-full">
+      <AccordionTrigger className="hover:bg-primary/5 px-4 md:px-6 rounded-xl group transition-all duration-200 border-transparent hover:border-primary/20 border mb-2">
+        <div className="flex items-center gap-4 text-sm md:text-base w-full py-2">
           <div
-            className="cursor-grab opacity-40 group-hover:opacity-100 p-1 rounded hover:bg-gray-100"
+            className="cursor-grab opacity-40 group-hover:opacity-100 p-2 rounded-lg hover:bg-primary/10 transition-colors"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4" />
+            <GripVertical className="h-5 w-5" />
           </div>
-          <Badge
-            variant="outline"
-            className="bg-green-100 text-green-800 hover:bg-green-100"
-          >
-            Day {day.id}
-          </Badge>
-          <span className="font-medium truncate max-w-[150px] sm:max-w-[250px] md:max-w-none">
-            {day.places.length > 0
-              ? day.places
-                .map((p) => getPlaceById(p.placeId)?.name || "")
-                .filter(Boolean)
-                .join(" & ")
-              : `Day ${day.id} Itinerary`}
-          </span>
+          <div className="flex flex-col items-start gap-1 flex-1 min-w-0 text-left">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 px-2 py-0 h-6 font-bold"
+              >
+                Day {day.id}
+              </Badge>
+              <span className="font-bold text-lg truncate tracking-tight">
+                {day.places.length > 0
+                  ? day.places
+                    .map((p) => getPlaceById(p.placeId)?.name || "")
+                    .filter(Boolean)
+                    .join(" → ")
+                  : "Unassigned Destination"}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Hotel className="h-3 w-3" />
+                {day.selectedAccommodation && day.selectedAccommodation !== "none"
+                  ? getAccommodationById(day.selectedAccommodation)?.name
+                  : "No Stay Recorded"}
+              </span>
+              <span className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                {formatCurrency(calculateDayCosts(day).totalCost)} Total
+              </span>
+            </div>
+          </div>
         </div>
       </AccordionTrigger>
-      <AccordionContent className="px-2 md:px-4 pt-4">
-        <Card className="border-green-200">
-          <CardContent className="space-y-4 md:space-y-6 pt-4 md:pt-6 px-3 md:px-6">
+      <AccordionContent className="px-1 md:px-4 pt-2">
+        <Card className="border-primary/10 shadow-lg overflow-hidden bg-white/50 dark:bg-card/50 backdrop-blur-sm">
+          <CardContent className="space-y-6 pt-6 px-4 md:px-8 pb-8">
             {/* Places Section */}
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                <Label className="text-base md:text-lg font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4 md:h-5 md:w-5" />
-                  Places to Visit
-                </Label>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col">
+                  <Label className="text-lg font-bold flex items-center gap-2 text-primary">
+                    <MapPin className="h-5 w-5" />
+                    Destinations & Expedition
+                  </Label>
+                  <p className="text-xs text-muted-foreground ml-7 italic">Select the key locations for this day's journey.</p>
+                </div>
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   onClick={() => addPlaceToDay(day.id)}
-                  className="flex items-center gap-1 w-full sm:w-auto"
+                  className="flex items-center gap-1.5 shadow-sm border border-primary/10 hover:bg-primary/10 h-9 transition-all"
                 >
-                  <Plus className="h-4 w-4" /> Add Place
+                  <Plus className="h-4 w-4" /> Add Milestone
                 </Button>
               </div>
 
               {day.places.length === 0 && (
-                <div className="text-center py-4 text-gray-500 border border-dashed rounded-md text-sm">
-                  No places added. Click "Add Place" to begin.
+                <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-xl bg-muted/30">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Ready for your itinerary. Add a place to start planning.</p>
                 </div>
               )}
 
-              {day.places.map((place, placeIndex) => (
-                <div
-                  key={placeIndex}
-                  className="border rounded-md p-3 md:p-4 space-y-3 md:space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-sm md:text-base">
-                      Place {placeIndex + 1}
-                    </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {day.places.map((place, placeIndex) => (
+                  <div
+                    key={placeIndex}
+                    className="relative group/place border rounded-xl p-4 bg-card shadow-sm hover:shadow-md transition-all border-primary/5 hover:border-primary/20"
+                  >
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removePlaceFromDay(day.id, placeIndex)}
-                      className="h-8 w-8 p-0 text-red-500"
+                      className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-white dark:bg-card border shadow-sm text-destructive hover:bg-destructive/10 hover:text-destructive p-0 z-10 opacity-0 group-hover/place:opacity-100 transition-opacity"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Remove place</span>
                     </Button>
-                  </div>
 
-                  {/* Place Selection */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor={`place-${day.id}-${placeIndex}`}
-                      className="text-sm"
-                    >
-                      Select Destination
-                    </Label>
-                    <Select
-                      value={place.placeId || ""}
-                      onValueChange={(value) =>
-                        updateDayPlace(day.id, placeIndex, value)
-                      }
-                    >
-                      <SelectTrigger
-                        id={`place-${day.id}-${placeIndex}`}
-                        className="text-sm"
-                      >
-                        <SelectValue placeholder="Select a place to visit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {places.map((placeOption) => (
-                          <SelectItem
-                            key={placeOption.id}
-                            value={placeOption.id}
-                            className="text-sm"
-                          >
-                            {placeOption.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge className="bg-primary/5 text-primary border-none font-medium h-5">#{placeIndex + 1}</Badge>
+                        <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Location</span>
+                      </div>
 
-                    {place.placeId && (
-                      <p className="text-xs md:text-sm text-gray-500 mt-1">
-                        {getPlaceById(place.placeId)?.description}
-                      </p>
-                    )}
-                  </div>
+                      <PlaceSelector
+                        place={place}
+                        places={places}
+                        dayId={day.id}
+                        placeIndex={placeIndex}
+                        updateDayPlace={updateDayPlace}
+                      />
 
-                  {/* Activities Selection */}
-                  {place.placeId && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-sm">
-                        Activities
-                      </Label>
-                      <div className="space-y-2">
-                        {getPlaceById(place.placeId)?.activities.map(
-                          (activity) => {
-                            const isZanzibarPlace = place.placeId === "zanzibar";
-                            return (
-                              <Collapsible
-                                key={activity.id}
-                                className="border rounded-md"
-                              >
-                                <div className="flex items-center justify-between p-2">
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox
-                                      id={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                      checked={place.selectedActivities.includes(
-                                        activity.id
-                                      )}
-                                      onCheckedChange={() =>
-                                        toggleActivity(
-                                          day.id,
-                                          placeIndex,
-                                          activity.id
-                                        )
-                                      }
-                                    />
-                                    <label
-                                      htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
-                                      className="font-medium cursor-pointer text-xs md:text-sm"
-                                    >
-                                      {activity.name}
-                                    </label>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-green-700 text-xs md:text-sm">
-                                      {formatCurrency(
-                                        isHighSeason
-                                          ? activity.highSeasonCost
-                                          : activity.lowSeasonCost
-                                      )}
-                                      <span className="text-xs text-gray-500 hidden sm:inline">
-                                        {" "}
-                                        {activity.id === "ngorongoro-crater-tour"
-                                          ? "per vehicle"
-                                          : isZanzibarPlace
-                                            ? "per person (group discounts apply)"
-                                            : "per adult"}
-                                      </span>
-                                    </span>
-                                    <CollapsibleTrigger className="rounded-full hover:bg-gray-100 p-1">
-                                      <svg
-                                        width="15"
-                                        height="15"
-                                        viewBox="0 0 15 15"
-                                        fill="none"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4"
+                      {place.placeId && (
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center gap-2">
+                            <Layers className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-bold uppercase tracking-wider">Curated Activities</span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            {getPlaceById(place.placeId)?.activities.map((activity) => {
+                              const isZanzibarPlace = place.placeId === "zanzibar";
+                              const isChecked = place.selectedActivities.includes(activity.id);
+                              return (
+                                <div
+                                  key={activity.id}
+                                  className={`flex flex-col border rounded-lg transition-all ${isChecked ? 'border-primary/30 bg-primary/5' : 'border-transparent bg-muted/20 hover:bg-muted/40'}`}
+                                >
+                                  <div className="flex items-center justify-between p-2.5">
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        id={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                        checked={isChecked}
+                                        onCheckedChange={() => toggleActivity(day.id, placeIndex, activity.id)}
+                                        className="data-[state=checked]:bg-primary"
+                                      />
+                                      <label
+                                        htmlFor={`activity-${day.id}-${placeIndex}-${activity.id}`}
+                                        className="font-bold text-sm cursor-pointer select-none leading-none"
                                       >
-                                        <path
-                                          d="M7.5 12L7.5 3M7.5 3L3.5 7M7.5 3L11.5 7"
-                                          stroke="currentColor"
-                                          strokeWidth="1.5"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        ></path>
-                                      </svg>
-                                    </CollapsibleTrigger>
+                                        {activity.name}
+                                      </label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-black text-xs text-primary">
+                                        {formatCurrency(
+                                          isHighSeason ? activity.highSeasonCost : activity.lowSeasonCost
+                                        )}
+                                      </span>
+                                      <Collapsible>
+                                        <CollapsibleTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full hover:bg-primary/10">
+                                            <Clock className="h-3 w-3 opacity-50" />
+                                          </Button>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="pt-2 px-1">
+                                          <p className="text-[10px] text-muted-foreground leading-relaxed italic">
+                                            {activity.description}
+                                          </p>
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    </div>
                                   </div>
                                 </div>
-                                <CollapsibleContent className="p-2 pt-0 border-t">
-                                  <p className="text-xs md:text-sm text-gray-600">
-                                    {activity.description}
-                                  </p>
-                                  <div className="mt-2 space-y-1">
-                                    {isZanzibarPlace && (
-                                      <p className="text-xs text-green-700">
-                                        Note: Price per person decreases for larger groups.
-                                      </p>
-                                    )}
-                                    <p className="text-xs text-gray-500 sm:hidden">
-                                      {activity.id === "ngorongoro-crater-tour"
-                                        ? `Charged per vehicle (${getVehicleCount(
-                                          getTotalClients()
-                                        )} vehicles needed)`
-                                        : "Charged per person"}
-                                    </p>
-                                    {activity.id === "ngorongoro-crater-tour" ? (
-                                      <p className="text-xs text-green-700">
-                                        Total:{" "}
-                                        {formatCurrency(
-                                          (isHighSeason
-                                            ? activity.highSeasonCost
-                                            : activity.lowSeasonCost) *
-                                          getVehicleCount(getTotalClients())
-                                        )}{" "}
-                                        for {getVehicleCount(getTotalClients())}{" "}
-                                        vehicle(s)
-                                      </p>
-                                    ) : (
-                                      activity.id !== "ngorongoro-crater-tour" &&
-                                      !isZanzibarPlace && (
-                                        <p className="text-xs text-green-700">
-                                          Child price:{" "}
-                                          {formatCurrency(
-                                            isHighSeason
-                                              ? activity.childHighSeasonCost
-                                              : activity.childLowSeasonCost
-                                          )}{" "}
-                                          per child
-                                        </p>
-                                      )
-                                    )}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            )
-                          }
-                        )}
-                      </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
+
+            <Separator className="bg-primary/5" />
 
             {/* Accommodation Selection */}
-            <div className="space-y-3 md:space-y-4">
-              <Label
-                htmlFor={`accommodation-${day.id}`}
-                className="text-base md:text-lg font-medium flex items-center gap-2"
-              >
-                <Hotel className="h-4 w-4 md:h-5 md:w-5" />
-                Overnight Accommodation
-              </Label>
-              <Select
-                value={day.selectedAccommodation || ""}
-                onValueChange={(value) =>
-                  handleAccommodationChange(day.id, value)
-                }
-              >
-                <SelectTrigger
-                  id={`accommodation-${day.id}`}
-                  className="text-sm h-auto"
-                >
-                  <SelectValue placeholder="Select accommodation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="text-sm">
-                    No accommodation (departure day)
-                  </SelectItem>
-                  {accommodations.map((acc) => {
-                    // Find a double room (max occupancy of 2) to display a representative price
-                    const doubleRoom = acc.roomTypes.find(
-                      (rt) => rt.maxOccupancy === 2
-                    );
-                    const price = doubleRoom
-                      ? isHighSeason
-                        ? doubleRoom.highSeasonCost
-                        : doubleRoom.lowSeasonCost
-                      : null;
-
-                    return (
-                      <SelectItem key={acc.id} value={acc.id} className="text-sm">
-                        <div className="flex justify-between items-center w-full gap-2">
-                          <span className="truncate flex-grow">{acc.name}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {acc.location && (
-                              <Badge
-                                variant="secondary"
-                                className="text-xs font-normal"
-                              >
-                                {acc.location}
-                              </Badge>
-                            )}
-                            {price !== null && (
-                              <span className="font-medium text-green-700 whitespace-nowrap w-[80px] text-right">
-                                {formatCurrency(price)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-
-              {day.selectedAccommodation &&
-                day.selectedAccommodation !== "none" && (
-                  <div className="space-y-3 md:space-y-4">
-                    <p className="text-xs md:text-sm text-gray-500">
-                      {
-                        getAccommodationById(day.selectedAccommodation)
-                          ?.description
-                      }
-                    </p>
-                    <p className="text-green-700 font-medium text-xs md:text-sm">
-                      Includes: Full Board (All Meals)
-                    </p>
-
-                    {/* Room Allocation */}
-                    <div className="border rounded-md p-3 md:p-4 bg-gray-50">
-                      <div className="flex items-center gap-2 mb-2 md:mb-3">
-                        <Bed className="h-4 w-4" />
-                        <h4 className="font-medium text-sm md:text-base">
-                          Room Allocation
-                        </h4>
-                      </div>
-
-                      <div className="space-y-3">
-                        {getAccommodationById(
-                          day.selectedAccommodation
-                        )?.roomTypes.map((roomType) => {
-                          const allocation = day.roomAllocation.find(
-                            (r) => r.roomTypeId === roomType.id
-                          );
-
-                          const quantity = allocation ? allocation.quantity : 0;
-
-                          return (
-                            <div
-                              key={roomType.id}
-                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0"
-                            >
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {roomType.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Max {roomType.maxOccupancy}{" "}
-                                  {roomType.maxOccupancy === 1
-                                    ? "person"
-                                    : "people"}{" "}
-                                  •{" "}
-                                  {formatCurrency(
-                                    isHighSeason
-                                      ? roomType.highSeasonCost
-                                      : roomType.lowSeasonCost
-                                  )}{" "}
-                                  per room
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() =>
-                                    updateRoomAllocation(
-                                      day.id,
-                                      roomType.id,
-                                      Math.max(0, quantity - 1)
-                                    )
-                                  }
-                                >
-                                  -
-                                </Button>
-                                <span className="w-8 text-center text-sm">
-                                  {quantity}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  onClick={() =>
-                                    updateRoomAllocation(
-                                      day.id,
-                                      roomType.id,
-                                      quantity + 1
-                                    )
-                                  }
-                                >
-                                  +
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        <Separator className="my-2" />
-
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
-                          <div className="text-sm">
-                            <span className="font-medium">
-                              Total Accommodated:
-                            </span>
-                            <span className="ml-2">
-                              {calculateTotalClientsAccommodated(
-                                day.roomAllocation,
-                                day.selectedAccommodation
-                              )}{" "}
-                              / {getTotalClients()} clients
-                            </span>
-                          </div>
-                          {calculateTotalClientsAccommodated(
-                            day.roomAllocation,
-                            day.selectedAccommodation
-                          ) < getTotalClients() && (
-                              <Badge
-                                variant="destructive"
-                                className="w-full sm:w-auto text-center"
-                              >
-                                Not enough rooms
-                              </Badge>
-                            )}
-                          {calculateTotalClientsAccommodated(
-                            day.roomAllocation,
-                            day.selectedAccommodation
-                          ) > getTotalClients() && (
-                              <Badge
-                                variant="outline"
-                                className="bg-amber-100 text-amber-800 border-amber-200 w-full sm:w-auto text-center"
-                              >
-                                Extra capacity
-                              </Badge>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Concession Fee Toggle */}
-                    {getAccommodationById(day.selectedAccommodation)
-                      ?.inPark && (
-                        <div className="flex items-center space-x-2 p-2 bg-amber-50 rounded-md">
-                          <Checkbox
-                            id={`concession-${day.id}`}
-                            checked={day.hasConcessionFee}
-                            onCheckedChange={() => toggleConcessionFee(day.id)}
-                          />
-                          <label
-                            htmlFor={`concession-${day.id}`}
-                            className="text-xs md:text-sm font-medium cursor-pointer"
-                          >
-                            Add park concession fee (${constants.CONCESSION_FEE}{" "}
-                            per adult, ${constants.CHILD_CONCESSION_FEE} per
-                            child)
-                          </label>
-                        </div>
-                      )}
-                  </div>
-                )}
-            </div>
-
-            {/* Transportation Cost */}
-            <div className="space-y-2">
-              <Label
-                htmlFor={`transportation-cost-${day.id}`}
-                className="flex items-center gap-2 text-sm"
-              >
-                <Car className="h-4 w-4" />
-                Transportation Cost
-              </Label>
-              <Input
-                id={`transportation-cost-${day.id}`}
-                type="number"
-                min="0"
-                placeholder="0.00"
-                value={day.transportationCost || ""}
-                onChange={(e) =>
-                  updateItinerary(
-                    day.id,
-                    "transportationCost",
-                    Number.parseFloat(e.target.value) || 0
-                  )
-                }
-                className="text-sm"
-              />
-            </div>
-
-            {/* Day Summary */}
-            <div className="bg-green-50 p-3 md:p-4 rounded-md">
-              <h4 className="font-medium text-green-800 mb-2 text-sm md:text-base">
-                Day {day.id} Cost Summary
-              </h4>
-              <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
-                {day.selectedAccommodation &&
-                  day.selectedAccommodation !== "none" && (
-                    <>
-                      <div>Accommodation (Full Board):</div>
-                      <div className="text-right font-medium">
-                        {formatCurrency(
-                          calculateDayCosts(day).accommodationCost
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                {day.places.some((p) => p.selectedActivities.length > 0) && (
-                  <>
-                    <div>Activities:</div>
-                    <div className="text-right font-medium">
-                      {formatCurrency(
-                        calculateDayCosts(day).totalActivitiesCost
-                      )}
-                    </div>
-                  </>
-                )}
-
-                <div>Transportation:</div>
-                <div className="text-right font-medium">
-                  {formatCurrency(day.transportationCost)}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <Label
+                    htmlFor={`accommodation-${day.id}`}
+                    className="text-lg font-bold flex items-center gap-2 text-primary"
+                  >
+                    <Hotel className="h-5 w-5" />
+                    Overnight Sanctuary
+                  </Label>
+                  <p className="text-xs text-muted-foreground ml-7 italic">Where the day's journey ends in comfort.</p>
                 </div>
 
-                {day.hasConcessionFee && (
-                  <>
-                    <div>Concession Fees:</div>
-                    <div className="text-right font-medium">
-                      {formatCurrency(
-                        calculateDayCosts(day).totalConcessionFee
+                <AccommodationSelector
+                  selectedId={day.selectedAccommodation}
+                  accommodations={accommodations}
+                  onSelect={(value) => handleAccommodationChange(day.id, value)}
+                />
+
+                {day.selectedAccommodation && day.selectedAccommodation !== "none" && (
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-bold uppercase tracking-wide">Included: Full Board Dining Suite</span>
+                    </div>
+
+                    {getAccommodationById(day.selectedAccommodation)?.inPark && (
+                      <div className="flex items-center space-x-3 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg">
+                        <Checkbox
+                          id={`concession-${day.id}`}
+                          checked={day.hasConcessionFee}
+                          onCheckedChange={() => toggleConcessionFee(day.id)}
+                          className="data-[state=checked]:bg-amber-600"
+                        />
+                        <label
+                          htmlFor={`concession-${day.id}`}
+                          className="text-xs font-semibold cursor-pointer text-amber-900 dark:text-amber-200"
+                        >
+                          Apply Sanctuary Conservation Fee (${constants.CONCESSION_FEE}/guest)
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Room Allocation */}
+              <div className="space-y-4">
+                <div className="flex flex-col">
+                  <Label className="text-lg font-bold flex items-center gap-2 text-primary">
+                    <Bed className="h-5 w-5" />
+                    Bespoke Suite Selection
+                  </Label>
+                  <p className="text-xs text-muted-foreground ml-7 italic">Customize the sleeping arrangements.</p>
+                </div>
+
+                {day.selectedAccommodation && day.selectedAccommodation !== "none" ? (
+                  <div className="border rounded-xl p-5 bg-card/50 shadow-inner space-y-4">
+                    {getAccommodationById(day.selectedAccommodation)?.roomTypes.map((roomType) => {
+                      const allocation = day.roomAllocation.find((r) => r.roomTypeId === roomType.id);
+                      const quantity = allocation ? allocation.quantity : 0;
+
+                      return (
+                        <div key={roomType.id} className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm truncate">{roomType.name}</p>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-0.5"><Users className="h-2.5 w-2.5" /> Max {roomType.maxOccupancy}</span>
+                              <span>•</span>
+                              <span className="text-primary/80 font-bold">{formatCurrency(isHighSeason ? roomType.highSeasonCost : roomType.lowSeasonCost)}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 hover:bg-white dark:hover:bg-card"
+                              onClick={() => updateRoomAllocation(day.id, roomType.id, Math.max(0, quantity - 1))}
+                            >
+                              -
+                            </Button>
+                            <span className="w-6 text-center text-xs font-black">{quantity}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 hover:bg-white dark:hover:bg-card"
+                              onClick={() => updateRoomAllocation(day.id, roomType.id, quantity + 1)}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    <div className="pt-3 border-t flex items-center justify-between">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Allocation status </span>
+                        <span className="font-black text-primary ml-1">
+                          {calculateTotalClientsAccommodated(day.roomAllocation, day.selectedAccommodation)} / {getTotalClients()}
+                        </span>
+                      </div>
+                      {calculateTotalClientsAccommodated(day.roomAllocation, day.selectedAccommodation) < getTotalClients() ? (
+                        <Badge variant="destructive" className="h-5 text-[9px] uppercase tracking-widest font-black">Capacity Gap</Badge>
+                      ) : (
+                        <Badge variant="outline" className="h-5 text-[9px] uppercase tracking-widest font-black text-green-600 bg-green-50 border-green-200">Confirmed</Badge>
                       )}
                     </div>
-                  </>
+                  </div>
+                ) : (
+                  <div className="h-40 border-2 border-dashed rounded-xl flex items-center justify-center bg-muted/20">
+                    <p className="text-xs text-muted-foreground font-medium italic">Select an accommodation to manage suites.</p>
+                  </div>
                 )}
+              </div>
+            </div>
 
-                <Separator className="col-span-2 my-1" />
+            <Separator className="bg-primary/5" />
 
-                <div className="font-medium">Day Total:</div>
-                <div className="text-right font-bold">
-                  {formatCurrency(calculateDayCosts(day).totalCost)}
+            {/* Logistics & Valuation */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+              <div className="lg:col-span-4 space-y-2">
+                <Label htmlFor={`transportation-cost-${day.id}`} className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
+                  <Car className="h-3.5 w-3.5" />
+                  Fleet Positioning ($)
+                </Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    id={`transportation-cost-${day.id}`}
+                    type="number"
+                    min="0"
+                    placeholder="0.00"
+                    value={day.transportationCost || ""}
+                    onChange={(e) => updateItinerary(day.id, "transportationCost", Number.parseFloat(e.target.value) || 0)}
+                    className="pl-8 h-10 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="lg:col-span-8">
+                <div className="bg-primary p-1 rounded-xl shadow-lg shadow-primary/10 overflow-hidden">
+                  <div className="bg-card dark:bg-card/90 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4 border border-primary/10">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase font-black tracking-[0.2em] text-primary/60 mb-0.5">End of Day Valuation</span>
+                      <h4 className="text-2xl font-black tracking-tighter text-primary">
+                        {formatCurrency(calculateDayCosts(day).totalCost)}
+                      </h4>
+                    </div>
+                    <div className="flex gap-4 text-right">
+                      <div className="hidden sm:flex flex-col">
+                        <span className="text-[9px] font-bold uppercase text-muted-foreground">Accom.</span>
+                        <span className="text-xs font-black">{formatCurrency(calculateDayCosts(day).accommodationCost)}</span>
+                      </div>
+                      <div className="hidden sm:flex flex-col">
+                        <span className="text-[9px] font-bold uppercase text-muted-foreground">Activity</span>
+                        <span className="text-xs font-black">{formatCurrency(calculateDayCosts(day).totalActivitiesCost)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold uppercase text-muted-foreground">Expedition</span>
+                        <span className="text-xs font-black">{formatCurrency(day.transportationCost)}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -807,7 +767,7 @@ export default function SafariCalculator({
         return day;
       })
     );
-  }, [getTotalClients, isHighSeason]);
+  }, [adults, children, isHighSeason]);
 
   // Modified to preserve existing data when changing days
   const initializeItinerary = (numDays: number) => {
@@ -1253,6 +1213,49 @@ export default function SafariCalculator({
     }).format(amount);
   };
 
+  const exportToCSV = () => {
+    try {
+      const headers = ["Day", "Destinations", "Accommodation", "Activities", "Daily Total"];
+      const rows = itinerary.map(day => {
+        const placesStr = day.places.map(p => getPlaceById(p.placeId)?.name).join(" / ");
+        const acc = getAccommodationById(day.selectedAccommodation)?.name || "Not Selected";
+        const activities = day.places.flatMap(p =>
+          p.selectedActivities.map(aId => getActivityById(p.placeId, aId)?.name)
+        ).join(", ");
+        const costs = calculateDayCosts(day);
+        return [
+          `Day ${day.id}`,
+          `"${placesStr}"`,
+          `"${acc}"`,
+          `"${activities}"`,
+          formatCurrency(costs.totalCost)
+        ];
+      });
+
+      const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${tourName.trim() || 'safari'}_itinerary.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Successful",
+        description: "Your itinerary has been exported to CSV.",
+      });
+    } catch (e) {
+      toast({
+        title: "Export Failed",
+        description: "There was an error generating the CSV.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const exportItinerary = () => {
     setIsExportDialogOpen(true);
   };
@@ -1632,534 +1635,614 @@ export default function SafariCalculator({
   }
 
   return (
-    <Tabs
-      defaultValue="setup"
-      value={activeTab}
-      onValueChange={setActiveTab}
-      className="space-y-4 md:space-y-6"
-    >
-      <TabsList className="grid grid-cols-3 w-full">
-        <TabsTrigger value="setup">Setup</TabsTrigger>
-        <TabsTrigger value="itinerary">Itinerary</TabsTrigger>
-        <TabsTrigger value="summary">Summary</TabsTrigger>
-      </TabsList>
-
-      {/* Setup Tab */}
-      <TabsContent value="setup" className="space-y-4 md:space-y-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
-            {currentSavedItinerary
-              ? currentSavedItinerary.name
-              : "New Safari Itinerary"}
-          </h2>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsSaveDialogOpen(true)}
+    <div className="min-h-screen bg-stone-50/50 p-3 md:p-8 font-sans selection:bg-primary/10">
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-10">
+        <Tabs
+          defaultValue="setup"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4 md:space-y-6"
+        >
+          <TabsList className="grid grid-cols-3 w-full h-14 p-1.5 bg-muted/50 rounded-2xl border shadow-inner">
+            <TabsTrigger
+              value="setup"
+              className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all font-bold text-sm tracking-tight"
             >
-              <Save className="h-4 w-4 mr-2" />
-              {currentSavedItinerary ? "Update" : "Save"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsLoadDialogOpen(true)}
+              <Settings2 className="h-4 w-4 mr-2" />
+              Configuration
+            </TabsTrigger>
+            <TabsTrigger
+              value="itinerary"
+              className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all font-bold text-sm tracking-tight"
             >
-              <FileDown className="h-4 w-4 mr-2" />
-              Load
-            </Button>
-          </div>
-        </div>
+              <Layers className="h-4 w-4 mr-2" />
+              Itinerary Architecture
+            </TabsTrigger>
+            <TabsTrigger
+              value="summary"
+              className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all font-bold text-sm tracking-tight"
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Financial Briefing
+            </TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader className="pb-2 md:pb-4">
-            <CardTitle className="text-xl md:text-2xl">
-              Safari Details
-            </CardTitle>
-            <CardDescription>
-              Enter the basic information about your safari
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 md:space-y-6">
-            <div className="grid gap-4 md:gap-6 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="days" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Number of Days
-                </Label>
-                <Input
-                  id="days"
-                  type="number"
-                  min="1"
-                  value={days}
-                  onChange={handleDaysChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="adults" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Number of Adults
-                </Label>
-                <Input
-                  id="adults"
-                  type="number"
-                  min="1"
-                  value={adults}
-                  onChange={(e) =>
-                    setAdults(Number.parseInt(e.target.value) || 1)
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="children" className="flex items-center gap-2">
-                  <Child className="h-4 w-4" />
-                  Children (Under 15)
-                </Label>
-                <Input
-                  id="children"
-                  type="number"
-                  min="0"
-                  value={children}
-                  onChange={(e) =>
-                    setChildren(Number.parseInt(e.target.value) || 0)
-                  }
-                />
-              </div>
-              <div className="space-y-2 md:col-span-3">
-                <Label htmlFor="profit" className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Profit Amount ($)
-                </Label>
-                <Input
-                  id="profit"
-                  type="number"
-                  min="0"
-                  value={profitAmount}
-                  onChange={(e) =>
-                    setProfitAmount(Number.parseInt(e.target.value) || 0)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-blue-50 rounded-md">
-              <div className="flex items-center gap-2 mb-2">
-                <Car className="h-4 w-4" />
-                <h4 className="font-medium">Vehicle Information</h4>
-              </div>
-
-              {/* Vehicle Mode Selection */}
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-3">
-                <Label
-                  htmlFor="vehicle-toggle"
-                  className="mb-1 sm:mb-0 text-sm"
-                >
-                  Vehicle Calculation:
-                </Label>
-                <div className="flex items-center space-x-2">
-                  <span
-                    className={
-                      !useManualVehicles
-                        ? "font-medium text-sm"
-                        : "text-gray-500 text-sm"
-                    }
-                  >
-                    Automatic
-                  </span>
-                  <Switch
-                    id="vehicle-toggle"
-                    checked={useManualVehicles}
-                    onCheckedChange={setUseManualVehicles}
-                  />
-                  <span
-                    className={
-                      useManualVehicles
-                        ? "font-medium text-sm"
-                        : "text-gray-500 text-sm"
-                    }
-                  >
-                    Manual
-                  </span>
+          {/* Setup Tab */}
+          <TabsContent value="setup" className="space-y-4 md:space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-card p-6 rounded-xl border shadow-sm">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Compass className="h-6 w-6 text-primary" />
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+                    {currentSavedItinerary
+                      ? currentSavedItinerary.name
+                      : "New Adventure Plan"}
+                  </h2>
                 </div>
-              </div>
-
-              {/* Show appropriate vehicle information based on mode */}
-              {useManualVehicles ? (
-                <div className="space-y-2">
-                  <Label htmlFor="vehicle-count" className="text-sm">
-                    Number of Vehicles
-                  </Label>
-                  <Input
-                    id="vehicle-count"
-                    type="number"
-                    min="1"
-                    value={vehicleCount}
-                    onChange={(e) =>
-                      setVehicleCount(
-                        Math.max(1, Number.parseInt(e.target.value) || 1)
-                      )
-                    }
-                    className="max-w-[150px]"
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">
-                  Each vehicle can accommodate up to{" "}
-                  {constants.VEHICLE_CAPACITY} clients. Your group will require{" "}
-                  <span className="font-bold">
-                    {getVehicleCount(getTotalClients())}
-                  </span>{" "}
-                  vehicle(s).
+                <p className="text-muted-foreground">
+                  Craft your perfect safari experience with precision.
                 </p>
-              )}
-
-              <p className="text-sm text-gray-600 mt-2">
-                Note: Ngorongoro Crater Floor Tour is charged per vehicle.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-              <Label htmlFor="season-toggle" className="mb-1 sm:mb-0">
-                Season:
-              </Label>
-              <div className="flex items-center space-x-2">
-                <span
-                  className={!isHighSeason ? "font-medium" : "text-gray-500"}
+              </div>
+              <div className="flex gap-3 w-full md:w-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1 md:flex-none h-11 shadow-sm hover:bg-secondary transition-colors"
+                  onClick={() => setIsLoadDialogOpen(true)}
                 >
-                  Low Season
-                </span>
-                <Switch
-                  id="season-toggle"
-                  checked={isHighSeason}
-                  onCheckedChange={setIsHighSeason}
-                />
-                <span
-                  className={isHighSeason ? "font-medium" : "text-gray-500"}
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Load Library
+                </Button>
+                <Button
+                  className="flex-1 md:flex-none h-11 bg-primary hover:bg-primary/90 shadow-md transition-all active:scale-[0.98]"
+                  onClick={() => setIsSaveDialogOpen(true)}
                 >
-                  High Season
-                </span>
+                  <Save className="h-4 w-4 mr-2" />
+                  {currentSavedItinerary ? "Update Draft" : "Save Plan"}
+                </Button>
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={() => setActiveTab("itinerary")}>
-                Continue to Itinerary
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-12">
+                <Card className="border-none shadow-none bg-transparent">
+                  <CardContent className="p-0">
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                      {/* Stats Summary Panel */}
+                      <div className="md:col-span-2 lg:col-span-1 border rounded-xl p-5 bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-md">
+                            <Settings2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+                          </div>
+                          <span className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Global Configuration</span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="days" className="text-sm font-medium">Duration</Label>
+                            <div className="relative">
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="days"
+                                type="number"
+                                min="1"
+                                value={days}
+                                onChange={handleDaysChange}
+                                className="pl-9 h-10 transition-all focus:ring-2 focus:ring-primary/20"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-dashed">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground font-medium uppercase tracking-tighter">Seasonality</span>
+                              <span className="text-sm font-bold">{isHighSeason ? "Premium High" : "Valuable Low"}</span>
+                            </div>
+                            <Switch
+                              id="season-toggle"
+                              checked={isHighSeason}
+                              onCheckedChange={setIsHighSeason}
+                              className="data-[state=checked]:bg-primary"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Travelers Panel */}
+                      <div className="md:col-span-2 lg:col-span-1 border rounded-xl p-5 bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-md">
+                            <Users className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+                          </div>
+                          <span className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Guest Composition</span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor="adults" className="text-xs">Adults</Label>
+                              <Input
+                                id="adults"
+                                type="number"
+                                min="1"
+                                value={adults}
+                                onChange={(e) => setAdults(Number.parseInt(e.target.value) || 1)}
+                                className="h-10 text-center font-semibold"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="children" className="text-xs">Children</Label>
+                              <Input
+                                id="children"
+                                type="number"
+                                min="0"
+                                value={children}
+                                onChange={(e) => setChildren(Number.parseInt(e.target.value) || 0)}
+                                className="h-10 text-center font-semibold"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                            <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-400">
+                              <span>Total Party:</span>
+                              <span className="font-bold text-sm tracking-widest">{getTotalClients()} Members</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Logistics Panel */}
+                      <div className="md:col-span-2 lg:col-span-1 border rounded-xl p-5 bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-md">
+                            <Car className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                          </div>
+                          <span className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Expedition Fleet</span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between px-1">
+                            <Label className="text-xs font-medium cursor-pointer" htmlFor="vehicle-toggle">System Guided</Label>
+                            <Switch
+                              id="vehicle-toggle"
+                              checked={useManualVehicles}
+                              onCheckedChange={setUseManualVehicles}
+                            />
+                            <Label className="text-xs font-medium cursor-pointer" htmlFor="vehicle-toggle">Manual overrides</Label>
+                          </div>
+
+                          {useManualVehicles ? (
+                            <Input
+                              type="number"
+                              min="1"
+                              value={vehicleCount}
+                              onChange={(e) => setVehicleCount(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                              className="h-10 text-center font-bold"
+                            />
+                          ) : (
+                            <div className="p-3 bg-amber-50/50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-900/30 text-center">
+                              <span className="text-xl font-bold text-amber-700 dark:text-amber-400">{getVehicleCount(getTotalClients())}</span>
+                              <span className="text-[10px] block uppercase font-semibold text-amber-600/70">Vehicles Required</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Financials Panel */}
+                      <div className="md:col-span-2 lg:col-span-1 border rounded-xl p-5 bg-card shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-md">
+                            <DollarSign className="h-4 w-4 text-purple-700 dark:text-purple-400" />
+                          </div>
+                          <span className="font-semibold text-sm tracking-wide uppercase text-muted-foreground">Management Fee</span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="profit"
+                              type="number"
+                              min="0"
+                              value={profitAmount}
+                              onChange={(e) => setProfitAmount(Number.parseInt(e.target.value) || 0)}
+                              className="pl-9 h-11 font-bold text-lg"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Sparkles className="h-3 w-3 text-purple-500" />
+                            <span>Applied to grand total as fixed margin</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="flex justify-center pt-4">
+              <Button
+                size="lg"
+                onClick={() => setActiveTab("itinerary")}
+                className="px-10 h-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg shadow-lg hover:shadow-primary/20 transition-all hover:translate-y-[-2px] active:translate-y-[1px]"
+              >
+                Initialize Plan Architecture
+                <Compass className="ml-3 h-5 w-5" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
+          </TabsContent>
 
-      {/* Itinerary Tab */}
-      <TabsContent value="itinerary" className="space-y-4 md:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
-            Day by Day Itinerary
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setActiveTab("setup")}
-              className="w-full sm:w-auto"
-            >
-              Back to Setup
-            </Button>
-            <Button
-              onClick={() => setActiveTab("summary")}
-              className="w-full sm:w-auto"
-            >
-              Continue to Summary
-            </Button>
-          </div>
-        </div>
+          {/* Itinerary Tab */}
+          <TabsContent value="itinerary" className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-card p-6 rounded-2xl border shadow-sm">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Layers className="h-5 w-5 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold tracking-tight">Sequence of Exploration</h2>
+                </div>
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Arrange and refine each milestone of the safari journey.
+                </p>
+              </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
-          <Label htmlFor="season-toggle-2" className="mb-1 sm:mb-0">
-            Season:
-          </Label>
-          <div className="flex items-center space-x-2">
-            <span className={!isHighSeason ? "font-medium" : "text-gray-500"}>
-              Low Season
-            </span>
-            <Switch
-              id="season-toggle-2"
-              checked={isHighSeason}
-              onCheckedChange={setIsHighSeason}
-            />
-            <span className={isHighSeason ? "font-medium" : "text-gray-500"}>
-              High Season
-            </span>
-          </div>
-        </div>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <Accordion type="single" collapsible className="w-full">
-            <SortableContext
-              items={itinerary.map((day) => day.id.toString())}
-              strategy={verticalListSortingStrategy}
-            >
-              {itinerary.map((day) => (
-                <SortableDayItem
-                  key={day.id}
-                  day={day}
-                  places={places}
-                  accommodations={accommodations}
-                  isHighSeason={isHighSeason}
-                  constants={constants}
-                  getTotalClients={getTotalClients}
-                  getVehicleCount={getVehicleCount}
-                  formatCurrency={formatCurrency}
-                  getPlaceById={getPlaceById}
-                  getAccommodationById={getAccommodationById}
-                  getRoomTypeById={getRoomTypeById}
-                  getActivityById={getActivityById}
-                  calculateDayCosts={calculateDayCosts}
-                  calculateTotalClientsAccommodated={
-                    calculateTotalClientsAccommodated
-                  }
-                  addPlaceToDay={addPlaceToDay}
-                  removePlaceFromDay={removePlaceFromDay}
-                  updateDayPlace={updateDayPlace}
-                  toggleActivity={toggleActivity}
-                  toggleConcessionFee={toggleConcessionFee}
-                  handleAccommodationChange={handleAccommodationChange}
-                  updateRoomAllocation={updateRoomAllocation}
-                  updateItinerary={updateItinerary}
+              <div className="flex items-center gap-4 bg-secondary/50 p-2 rounded-xl border border-dashed">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Season Mode</span>
+                  <span className="text-xs font-bold">{isHighSeason ? "Premium High" : "Valuable Low"}</span>
+                </div>
+                <Switch
+                  id="season-toggle-2"
+                  checked={isHighSeason}
+                  onCheckedChange={setIsHighSeason}
+                  className="data-[state=checked]:bg-primary"
                 />
-              ))}
-            </SortableContext>
-          </Accordion>
-        </DndContext>
+              </div>
+            </div>
 
-        <div className="flex flex-col sm:flex-row justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setActiveTab("setup")}
-            className="w-full sm:w-auto"
-          >
-            Back to Setup
-          </Button>
-          <Button
-            onClick={() => setActiveTab("summary")}
-            className="w-full sm:w-auto"
-          >
-            Continue to Summary
-          </Button>
-        </div>
-      </TabsContent>
-
-      {/* Summary Tab */}
-      <TabsContent value="summary" className="space-y-4 md:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-          <h2 className="text-xl md:text-2xl font-semibold text-green-800">
-            Safari Cost Summary
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setActiveTab("itinerary")}
-              className="w-full sm:w-auto"
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              Back to Itinerary
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setIsSaveDialogOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {currentSavedItinerary ? "Update" : "Save"}
-            </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  Export Safari Itinerary
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Export Itinerary</h3>
-                  <p className="text-sm text-gray-500">
-                    Enter a name for the tour to be used as the file name.
-                  </p>
-                  <div>
-                    <Label htmlFor="tour-name">Tour Name</Label>
-                    <Input
-                      id="tour-name"
-                      value={tourName}
-                      onChange={(e) => setTourName(e.target.value)}
-                      placeholder="Safari Tour"
+              <Accordion type="single" collapsible className="space-y-3">
+                <SortableContext
+                  items={itinerary.map((day) => day.id.toString())}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {itinerary.map((day) => (
+                    <SortableDayItem
+                      key={day.id}
+                      day={day}
+                      places={places}
+                      accommodations={accommodations}
+                      isHighSeason={isHighSeason}
+                      constants={constants}
+                      getTotalClients={getTotalClients}
+                      getVehicleCount={getVehicleCount}
+                      formatCurrency={formatCurrency}
+                      getPlaceById={getPlaceById}
+                      getAccommodationById={getAccommodationById}
+                      getRoomTypeById={getRoomTypeById}
+                      getActivityById={getActivityById}
+                      calculateDayCosts={calculateDayCosts}
+                      calculateTotalClientsAccommodated={
+                        calculateTotalClientsAccommodated
+                      }
+                      addPlaceToDay={addPlaceToDay}
+                      removePlaceFromDay={removePlaceFromDay}
+                      updateDayPlace={updateDayPlace}
+                      toggleActivity={toggleActivity}
+                      toggleConcessionFee={toggleConcessionFee}
+                      handleAccommodationChange={handleAccommodationChange}
+                      updateRoomAllocation={updateRoomAllocation}
+                      updateItinerary={updateItinerary}
                     />
+                  ))}
+                </SortableContext>
+              </Accordion>
+            </DndContext>
+
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 mt-6 border-t border-dashed">
+              <Button
+                variant="ghost"
+                onClick={() => setActiveTab("setup")}
+                className="w-full sm:w-auto h-12 text-muted-foreground hover:text-foreground font-semibold"
+              >
+                ← Back to Configuration
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => setActiveTab("summary")}
+                className="w-full sm:w-auto h-14 px-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-xl transition-all hover:translate-x-[4px]"
+              >
+                Complete Itinerary Analysis
+                <CheckCircle2 className="ml-3 h-5 w-5" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="summary" className="space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-card p-8 rounded-3xl border shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 bg-primary rounded-xl shadow-lg shadow-primary/20">
+                    <DollarSign className="h-6 w-6 text-primary-foreground" />
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setIsExportDialogOpen(false)}
-                    >
-                      Cancel
+                  <h2 className="text-3xl font-black tracking-tighter">Expedition Financial Briefing</h2>
+                </div>
+                <p className="text-muted-foreground flex items-center gap-2 font-medium">
+                  <Search className="h-4 w-4 text-primary" />
+                  Comprehensive breakdown of your curated safari architecture.
+                </p>
+              </div>
+              <div className="relative z-10 flex gap-4">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-14 px-8 rounded-full border-primary/20 hover:bg-primary/5 font-bold transition-all shadow-sm"
+                  onClick={exportToCSV}
+                >
+                  <FileDown className="h-5 w-5 mr-3 text-primary" />
+                  Export Brief
+                </Button>
+                <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="lg" className="h-14 px-8 rounded-full bg-primary hover:bg-primary/90 font-bold shadow-xl">
+                      Bespoke PDF Export
                     </Button>
-                    <Button onClick={handleExport}>Export</Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Breakdown</CardTitle>
-              <CardDescription>Detailed breakdown of all costs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>Accommodation:</div>
-                <div className="text-right">
-                  {formatCurrency(totals.accommodation)}
-                </div>
-
-                <div>Activities:</div>
-                <div className="text-right">
-                  {formatCurrency(totals.activities)}
-                </div>
-
-                <div>Transportation:</div>
-                <div className="text-right">
-                  {formatCurrency(totals.transportation)}
-                </div>
-
-                <div>Concession Fees:</div>
-                <div className="text-right">
-                  {formatCurrency(totals.concessionFees)}
-                </div>
-
-                <Separator className="col-span-2" />
-
-                <div className="font-medium">Subtotal:</div>
-                <div className="text-right font-medium">
-                  {formatCurrency(totals.subtotal)}
-                </div>
-
-                <div>Profit:</div>
-                <div className="text-right">
-                  {formatCurrency(totals.profit)}
-                </div>
-
-                <Separator className="col-span-2" />
-
-                <div className="font-bold">Total:</div>
-                <div className="text-right font-bold">
-                  {formatCurrency(totals.total)}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Per Person</CardTitle>
-              <CardDescription>
-                {adults > 0 && children > 0
-                  ? "Prices split in a 1:2 ratio (children:adults)"
-                  : "Average cost per person"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {adults > 0 && (
-                  <>
-                    <div>Cost Per Adult:</div>
-                    <div className="text-right">
-                      {formatCurrency(totals.perAdult)}
-                    </div>
-                  </>
-                )}
-
-                {children > 0 && (
-                  <>
-                    <div>Cost Per Child:</div>
-                    <div className="text-right">
-                      {formatCurrency(totals.perChild)}
-                    </div>
-                  </>
-                )}
-
-                {adults > 0 && children > 0 && (
-                  <>
-                    <div className="col-span-2 mt-2 text-sm text-gray-600">
-                      Adults pay twice as much as children, making this a
-                      family-friendly pricing option.
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Vehicle Information</CardTitle>
-              <CardDescription>
-                Number of vehicles required for your safari
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>Total Clients:</div>
-                  <div className="text-right">
-                    {getTotalClients()} ({adults} adults, {children} children)
-                  </div>
-
-                  {!useManualVehicles && (
-                    <>
-                      <div>Vehicle Capacity:</div>
-                      <div className="text-right">
-                        {constants.VEHICLE_CAPACITY} clients per vehicle
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px] rounded-3xl border-primary/10">
+                    <div className="space-y-6 py-4">
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-black tracking-tight">Expedition Charter</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Define the title for your curated safari itinerary.
+                        </p>
                       </div>
-                    </>
-                  )}
-
-                  <div className="font-medium">Vehicles Required:</div>
-                  <div className="text-right font-medium">
-                    {getVehicleCount(getTotalClients())}
-                    {useManualVehicles && " (manually set)"}
-                  </div>
-                </div>
-
-                <div className="text-sm text-gray-600 mt-2 p-2 bg-blue-50 rounded-md">
-                  <p>
-                    Note: The Ngorongoro Crater Floor Tour is charged per
-                    vehicle. Each vehicle can enter the crater with its own
-                    guide and permit.
-                  </p>
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tour-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expedition Title</Label>
+                        <Input
+                          id="tour-name"
+                          value={tourName}
+                          onChange={(e) => setTourName(e.target.value)}
+                          placeholder="e.g. Serengeti Majestic Trails"
+                          className="h-12 border-primary/10"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-3 pt-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setIsExportDialogOpen(false)}
+                          className="font-bold"
+                        >
+                          Cancel
+                        </Button>
+                        <Button onClick={handleExport} className="font-bold bg-primary px-8">Confirm Export</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </TabsContent>
+            </div>
 
-      {/* Save Itinerary Dialog */}
-      <SaveItineraryDialog
-        open={isSaveDialogOpen}
-        onOpenChange={setIsSaveDialogOpen}
-        onSave={handleSaveItinerary}
-        currentItinerary={currentSavedItinerary}
-      />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border-none bg-primary shadow-xl shadow-primary/10 overflow-hidden group">
+                <CardContent className="p-8 relative">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                    <Sparkles className="h-16 w-16 text-white" />
+                  </div>
+                  <div className="space-y-4">
+                    <span className="text-[10px] uppercase font-black tracking-[0.3em] text-primary-foreground/60">Total Balanced Investment</span>
+                    <div className="flex flex-col">
+                      <span className="text-4xl font-black text-white tracking-tighter">
+                        {formatCurrency(totals.total)}
+                      </span>
+                      <p className="text-xs text-primary-foreground/80 mt-2 font-medium">Standard currency: USD</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-      {/* Load Itinerary Dialog */}
-      <LoadItineraryDialog
-        open={isLoadDialogOpen}
-        onOpenChange={setIsLoadDialogOpen}
-        onLoad={handleLoadItinerary}
-        onDelete={handleDeleteItinerary}
-      />
-    </Tabs>
+              <Card className="border-primary/10 bg-card shadow-md hover:shadow-lg transition-all">
+                <CardContent className="p-8">
+                  <div className="space-y-4">
+                    <span className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground">Allocation Per Adult</span>
+                    <div className="flex flex-col">
+                      <span className="text-3xl font-black text-foreground tracking-tighter">
+                        {formatCurrency(totals.perAdult)}
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium capitalize">Drafted for {adults} Leaders</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/10 bg-card shadow-md hover:shadow-lg transition-all">
+                <CardContent className="p-8">
+                  <div className="space-y-4">
+                    <span className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground">Logistics Efficiency</span>
+                    <div className="flex flex-col">
+                      <span className="text-3xl font-black text-foreground tracking-tighter">
+                        {getVehicleCount(getTotalClients())} Units
+                      </span>
+                      <p className="text-xs text-muted-foreground mt-2 font-medium">Optimized Expedition Fleet</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card className="border-primary/5 shadow-sm overflow-hidden">
+                <CardHeader className="bg-muted/30 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-primary/10 rounded-md">
+                      <Layers className="h-4 w-4 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl font-bold tracking-tight">Structured Cost Components</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="divide-y divide-primary/5">
+                    <div className="p-6 flex justify-between items-center group hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/10 flex items-center justify-center">
+                          <Hotel className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Accommodation Portfolio</p>
+                          <p className="text-xs text-muted-foreground">Full board stay across all locations</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg">{formatCurrency(totals.accommodation)}</span>
+                    </div>
+
+                    <div className="p-6 flex justify-between items-center group hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-emerald-50 dark:bg-emerald-900/10 flex items-center justify-center">
+                          <MapPin className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Experience & Activities</p>
+                          <p className="text-xs text-muted-foreground">Curated safaris and excursions</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg">{formatCurrency(totals.activities)}</span>
+                    </div>
+
+                    <div className="p-6 flex justify-between items-center group hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center">
+                          <Car className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Expedition Logistics</p>
+                          <p className="text-xs text-muted-foreground">Vehicles, positioning and fleet costs</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg">{formatCurrency(totals.transportation)}</span>
+                    </div>
+
+                    <div className="p-6 flex justify-between items-center group hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-purple-50 dark:bg-purple-900/10 flex items-center justify-center">
+                          <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">Professional Management</p>
+                          <p className="text-xs text-muted-foreground">Coordination and profit margin</p>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg">{formatCurrency(totals.profit)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/5 shadow-sm overflow-hidden flex flex-col">
+                <CardHeader className="bg-muted/30 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-primary/10 rounded-md">
+                      <Compass className="h-4 w-4 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl font-bold tracking-tight">Expedition Schedule Brief</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 p-6">
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-xl bg-muted/20 border border-primary/5">
+                        <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest block mb-1">Duration</span>
+                        <span className="text-lg font-black">{days} Days / {days - 1} Nights</span>
+                      </div>
+                      <div className="p-4 rounded-xl bg-muted/20 border border-primary/5">
+                        <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest block mb-1">Season</span>
+                        <span className="text-lg font-black">{isHighSeason ? "High Season" : "Low Season"}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest block">Operational Timeline</span>
+                      <div className="relative pl-6 border-l-2 border-primary/20 space-y-6">
+                        {itinerary.slice(0, 3).map((day, i) => (
+                          <div key={day.id} className="relative">
+                            <div className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full border-4 border-card bg-primary shadow-sm" />
+                            <div>
+                              <p className="text-xs font-black uppercase text-primary mb-0.5">Day {day.id}</p>
+                              <p className="text-sm font-bold truncate">
+                                {day.places.length > 0
+                                  ? day.places.map(p => getPlaceById(p.placeId)?.name).join(" → ")
+                                  : "Exploration day"}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {itinerary.length > 3 && (
+                          <div className="relative pt-2">
+                            <div className="absolute -left-[27px] top-4 h-2 w-2 rounded-full bg-muted-foreground/30" />
+                            <p className="text-xs text-muted-foreground font-medium italic">Continuing for {itinerary.length - 3} additional days...</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <div className="p-6 bg-primary/5 border-t border-primary/5 flex items-center justify-between">
+                  <span className="text-sm font-bold">Comprehensive Analysis Complete</span>
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                </div>
+              </Card>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-center gap-6 pt-4">
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => setActiveTab("itinerary")}
+                className="h-14 px-8 rounded-full text-muted-foreground hover:text-foreground font-bold"
+              >
+                ← Adjust Itinerary Architecture
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => setIsSaveDialogOpen(true)}
+                className="h-14 px-12 rounded-full bg-card hover:bg-muted border-primary/10 text-primary font-black text-xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {currentSavedItinerary ? "Update Exploration" : "Preserve Drafting"}
+                <Save className="ml-3 h-5 w-5" />
+              </Button>
+              <Button
+                size="lg"
+                className="h-14 px-12 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xl shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Finalize Expedition Drafting
+                <Compass className="ml-3 h-6 w-6" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          <SaveItineraryDialog
+            open={isSaveDialogOpen}
+            onOpenChange={setIsSaveDialogOpen}
+            onSave={handleSaveItinerary}
+            currentItinerary={currentSavedItinerary}
+          />
+
+          <LoadItineraryDialog
+            open={isLoadDialogOpen}
+            onOpenChange={setIsLoadDialogOpen}
+            onLoad={handleLoadItinerary}
+            onDelete={handleDeleteItinerary}
+          />
+        </Tabs>
+      </div>
+    </div>
   );
 }
