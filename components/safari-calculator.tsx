@@ -2032,7 +2032,12 @@ export default function SafariCalculator({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className={cn(
+              "grid gap-6",
+              children > 0
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                : "grid-cols-1 md:grid-cols-3"
+            )}>
               <Card className="border-none bg-primary shadow-xl shadow-primary/10 overflow-hidden group">
                 <CardContent className="p-8 relative">
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
@@ -2063,6 +2068,22 @@ export default function SafariCalculator({
                   </div>
                 </CardContent>
               </Card>
+
+              {children > 0 && (
+                <Card className="border-primary/10 bg-card shadow-md hover:shadow-lg transition-all">
+                  <CardContent className="p-8">
+                    <div className="space-y-4">
+                      <span className="text-[10px] uppercase font-black tracking-[0.3em] text-muted-foreground">Allocation Per Kid</span>
+                      <div className="flex flex-col">
+                        <span className="text-3xl font-black text-foreground tracking-tighter">
+                          {formatCurrency(totals.perChild)}
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-2 font-medium capitalize">Drafted for {children} Kids</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card className="border-primary/10 bg-card shadow-md hover:shadow-lg transition-all">
                 <CardContent className="p-8">
