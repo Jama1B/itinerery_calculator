@@ -1,5 +1,6 @@
 "use server";
 
+import { cacheTag, revalidateTag, revalidatePath } from "next/cache";
 import {
     getPlaces,
     getAccommodations,
@@ -24,6 +25,7 @@ import type { Place, Accommodation } from "@/types/safaris";
  */
 export async function getSafariData() {
     "use cache";
+    cacheTag("safari-data");
 
     const [places, accommodations, constants] = await Promise.all([
         getPlaces(),
@@ -90,26 +92,38 @@ export async function getItineraryByIdAction(id: string): Promise<SavedItinerary
  * Server Action to save or update a place.
  */
 export async function savePlaceAction(place: Place) {
-    return await dbSavePlace(place);
+    const result = await dbSavePlace(place);
+    revalidateTag("safari-data", "max");
+    revalidatePath("/");
+    return result;
 }
 
 /**
  * Server Action to delete a place.
  */
 export async function deletePlaceAction(id: string) {
-    return await dbDeletePlace(id);
+    const result = await dbDeletePlace(id);
+    revalidateTag("safari-data", "max");
+    revalidatePath("/");
+    return result;
 }
 
 /**
  * Server Action to save or update an accommodation.
  */
 export async function saveAccommodationAction(acc: Accommodation) {
-    return await dbSaveAccommodation(acc);
+    const result = await dbSaveAccommodation(acc);
+    revalidateTag("safari-data", "max");
+    revalidatePath("/");
+    return result;
 }
 
 /**
  * Server Action to delete an accommodation.
  */
 export async function deleteAccommodationAction(id: string) {
-    return await dbDeleteAccommodation(id);
+    const result = await dbDeleteAccommodation(id);
+    revalidateTag("safari-data", "max");
+    revalidatePath("/");
+    return result;
 }

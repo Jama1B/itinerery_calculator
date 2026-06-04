@@ -744,7 +744,18 @@ export default function SafariCalculator({
     })
   );
 
-  // No longer need client-side fetch on mount
+  // Sync props to state when they change on the server (e.g., after database revalidation)
+  useEffect(() => {
+    setPlaces(initialPlaces);
+  }, [initialPlaces]);
+
+  useEffect(() => {
+    setAccommodations(initialAccommodations);
+  }, [initialAccommodations]);
+
+  useEffect(() => {
+    setConstants(initialConstants);
+  }, [initialConstants]);
 
   // Initialize itinerary when days change
   useEffect(() => {
